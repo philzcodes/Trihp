@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BackButton } from '../components';
-import { Colors, Fonts } from '../constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BackButton } from '../../components';
+import { Colors, Fonts } from '../../constants';
 
 const RideHistory = () => {
   const router = useRouter();
@@ -132,7 +133,8 @@ const RideHistory = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+     
       <BackButton onPress={() => router.back()} />
       
       <View style={styles.header}>
@@ -149,7 +151,7 @@ const RideHistory = () => {
         onRefresh={handleRefresh}
         ListEmptyComponent={renderEmptyComponent}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -1,6 +1,6 @@
 export { default as Dashboard } from '../../app/(tabs)/Dashboard';
+export { default as Help } from '../../app/accounts/Help';
 export { default as ForgotPassword } from '../../app/ForgotPassword';
-export { default as Help } from '../../app/Help';
 export { default as Profile } from '../../app/Profile';
 export { default as Settings } from '../../app/Settings';
 export { default as TransactionHistory } from '../../app/TransactionHistory';

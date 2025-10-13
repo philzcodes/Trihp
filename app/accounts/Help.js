@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Fonts } from '../constants';
+import { Colors, Fonts } from '../../constants';
 
 const Help = () => {
   const router = useRouter();

@@ -1,10 +1,13 @@
 import * as React from 'react';
 import Svg, { Path } from 'react-native-svg';
 
-function UserIcon(props: any) {
+function UserIcon({ width, height, ...props }: { width?: number; height?: number }) {
   return (
-    <Svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <Path d="M8 0a4 4 0 110 8 4 4 0 010-8zm0 10c4.42 0 8 1.79 8 4v2H0v-2c0-2.21 3.58-4 8-4z" fill="#fff" />
+    <Svg width={width || 24} height={height || 18} viewBox="0 0 11 11" fill="none" {...props}>
+      <Path
+        d="M5.5 0a2.75 2.75 0 110 5.5 2.75 2.75 0 010-5.5zm0 6.875c3.039 0 5.5 1.23 5.5 2.75V11H0V9.625c0-1.52 2.461-2.75 5.5-2.75z"
+        fill="#fff"
+      />
     </Svg>
   );
 }
