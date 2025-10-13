@@ -2,16 +2,17 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   Image,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts } from '../constants';
 
 const DashboardHeader = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   // Mock user data - replace with actual user data from your state management
   const user = {
@@ -21,7 +22,7 @@ const DashboardHeader = () => {
   };
 
   return (
-    <View style={{ marginTop: Platform.OS === 'ios' ? 0 : 20 }}>
+    <View style={{ marginTop: insets.top || 20 }}>
       <View style={[styles.container, { paddingBottom: 15 }]}>
         <View style={styles.container}>
           <Pressable onPress={() => router.push('/profile')}>

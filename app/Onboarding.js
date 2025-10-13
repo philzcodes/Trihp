@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, BackHandler, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Logo from '../assets/onboardingImages/components/Logo';
 import { Colors, Fonts } from '../constants';
 
@@ -29,7 +30,7 @@ const Onboarding = () => {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ImageBackground source={require('../assets/onboardingImages/bg.jpg')} style={styles.backgroundImage}>
         <View style={styles.mainContainer}>
           <View style={styles.logoContainer}>
@@ -70,7 +71,7 @@ const Onboarding = () => {
           </View>
         </View>
       </ImageBackground>
-    </View>
+    </SafeAreaView>
   );
 };
 

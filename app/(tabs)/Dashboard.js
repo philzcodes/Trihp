@@ -9,13 +9,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Components
 import DashBoardInput from '../../components/DashBoardInput';
@@ -27,8 +27,6 @@ import { Colors, Fonts } from '../../constants';
 const Dashboard = () => {
   const router = useRouter();
   
-  // State for active tab in bottom navigation
-  const [activeTab, setActiveTab] = useState('Home');
   
   // Dummy data states
   const [recentRide, setRecentRide] = useState([
@@ -184,7 +182,7 @@ const Dashboard = () => {
               {/* Banner */}
               <View style={styles.bannerContainer}>
                 <Image 
-                  source={require('../assets/images/banner.jpg')} 
+                  source={require('../../assets/images/banner.jpg')} 
                   resizeMode="cover" 
                   style={styles.bannerImage} 
                 />
@@ -214,77 +212,6 @@ const Dashboard = () => {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Bottom Navigation Bar */}
-      <View style={styles.navBar}>
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => {
-            setActiveTab('Home');
-            router.push('/dashboard');
-          }}
-        >
-          <Image 
-            source={require('../assets/images/homeicon.png')} 
-            style={[
-              styles.navIcon,
-              { tintColor: activeTab === 'Home' ? Colors.yellow : '#666' }
-            ]}
-            resizeMode="contain"
-          />
-          <Text style={[
-            styles.navText, 
-            { color: activeTab === 'Home' ? Colors.yellow : '#666' }
-          ]}>
-            Home
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => {
-            setActiveTab('Services');
-            router.push('/services');
-          }}
-        >
-          <Image 
-            source={require('../assets/images/menuicon.png')} 
-            style={[
-              styles.navIcon,
-              { tintColor: activeTab === 'Services' ? Colors.yellow : '#666' }
-            ]}
-            resizeMode="contain"
-          />
-          <Text style={[
-            styles.navText, 
-            { color: activeTab === 'Services' ? Colors.yellow : '#666' }
-          ]}>
-            Services
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => {
-            setActiveTab('Account');
-            router.push('/profile');
-          }}
-        >
-          <Image 
-            source={require('../assets/images/usericon.png')} 
-            style={[
-              styles.navIcon,
-              { tintColor: activeTab === 'Account' ? Colors.yellow : '#666' }
-            ]}
-            resizeMode="contain"
-          />
-          <Text style={[
-            styles.navText, 
-            { color: activeTab === 'Account' ? Colors.yellow : '#666' }
-          ]}>
-            Account
-          </Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -293,9 +220,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.blackColor,
-  },
-  mainContent: {
-    flex: 1,
   },
   container: {
     flex: 1,
@@ -385,33 +309,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.whiteColor,
     marginBottom: 6,
-  },
-  // Bottom Navigation Styles
-  navBar: {
-    flexDirection: 'row',
-    height: 120,
-    backgroundColor: Colors.blackColor,
-    borderTopWidth: 1,
-    borderTopColor: Colors.whiteColor,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: 30,
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  navIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 4,
-  },
-  navText: {
-    fontSize: 12,
-    marginTop: 5,
-    fontWeight: '500',
-    ...Fonts.Regular,
   },
 });
 
