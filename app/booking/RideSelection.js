@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BackButton, TriphButton } from '../components';
-import { Colors, Fonts } from '../constants';
+import { BackButton, TriphButton } from '../../components';
+import { Colors, Fonts } from '../../constants';
 
 const RideSelection = () => {
   const router = useRouter();

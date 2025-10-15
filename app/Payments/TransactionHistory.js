@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Fonts } from '../constants';
+import BackButton from '../../components/BackButton';
+import { Colors, Fonts } from '../../constants';
 
 const TransactionHistory = () => {
   const router = useRouter();
@@ -46,6 +47,19 @@ const TransactionHistory = () => {
       transaction_id: 'TRIHP-123456',
     },
   ];
+
+  // Handle hardware back button on Android
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        router.back();
+        return true; // Prevent default behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
 
   useEffect(() => {
     fetchTransactions(selectedFilter);
@@ -93,6 +107,7 @@ const TransactionHistory = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>Transaction History</Text>
         <Pressable onPress={() => setModalVisible(true)} style={styles.filterButton}>
           <Text style={styles.filterText}>Filter</Text>

@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Fonts } from '../constants';
+import { Colors, Fonts } from '../../constants/Styles';
 
 const TopUp = () => {
   const router = useRouter();
@@ -16,7 +16,7 @@ const TopUp = () => {
       id: '1',
       type: 'mastercard',
       cardNumber: '4444',
-      image: require('../assets/images/paymentMode/mastercard.png'),
+      image: require('../../assets/images/paymentMode/mastercard.png'),
       expiryDate: '12/23',
       holder: 'Stephen',
     },
@@ -24,7 +24,7 @@ const TopUp = () => {
       id: '2',
       type: 'afrimoney',
       cardNumber: '5555',
-      image: require('../assets/images/paymentMode/afrimoney.png'),
+      image: require('../../assets/images/paymentMode/afrimoney.png'),
       expiryDate: '12/23',
       holder: 'Stephen',
     },
