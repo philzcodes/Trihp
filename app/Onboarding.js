@@ -8,7 +8,7 @@ import { Colors, Fonts } from '../constants';
 
 const Onboarding = () => {
   const { height, width } = useWindowDimensions();
-  const carAnimationValue = useRef(new Animated.Value(0));
+  const carAnimationValue = useRef(new Animated.Value(0)).current;
   const router = useRouter();
 
   useEffect(() => {
@@ -20,14 +20,30 @@ const Onboarding = () => {
     return () => backHandler.remove();
   }, []);
 
-  useEffect(() => {
-    carAnimationValue.current.setValue(0);
-  }, []);
-
-  const carTranslateX = carAnimationValue.current.interpolate({
+  const carTranslateX = carAnimationValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -width],
+    outputRange: [0, -width * 1.2], // Slide completely off screen
   });
+
+  const animateCarAndNavigate = (route) => {
+    Animated.timing(carAnimationValue, {
+      toValue: 1,
+      duration: 1300, // Animation duration in milliseconds
+      useNativeDriver: true,
+    }).start(() => {
+      router.push(route);
+      // Reset animation after navigation
+      carAnimationValue.setValue(0);
+    });
+  };
+
+  const handleRegisterPress = () => {
+    animateCarAndNavigate('/SignUp');
+  };
+
+  const handleLoginPress = () => {
+    animateCarAndNavigate('/Login');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,18 +71,22 @@ const Onboarding = () => {
 
           <View style={styles.bottomTextContainer}>
               <View style={{flexDirection: 'row', justifyContent: 'space-around', width: '100%'}}>
-              <TouchableOpacity style={[styles.button, {backgroundColor: Colors.whiteColor}]} onPress={() => router.push('/SignUp')}>
-              <Text style={[styles.buttonText, {color: Colors.blackColor}]}>Register</Text>
-             
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={() => router.push('/Login')}>
-              <Text style={styles.buttonText}>Login</Text>
-        
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.button, {backgroundColor: Colors.whiteColor}]} 
+                onPress={handleRegisterPress}
+              >
+                <Text style={[styles.buttonText, {color: Colors.blackColor}]}>Register</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={handleLoginPress}
+              >
+                <Text style={styles.buttonText}>Login</Text>
+              </TouchableOpacity>
               </View>
             <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10}}>
-            <Text style={styles.subText}>Drive & Earn with Trihp </Text> 
-            <MaterialIcons name="keyboard-double-arrow-right" size={24} color="black" />
+              <Text style={styles.subText}>Drive & Earn with Trihp </Text> 
+              <MaterialIcons name="keyboard-double-arrow-right" size={24} color="black" />
             </View>
           </View>
         </View>
@@ -87,7 +107,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'relative',
-    // paddingTop: 60,
     flex: 1,
   },
   logoContainer: {
@@ -102,7 +121,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     width: '100%',
     alignItems: 'center',
-    // marginBottom: 50,
   },
   carImage: {
     alignSelf: 'center',
@@ -158,6 +176,5 @@ const styles = StyleSheet.create({
     ...Fonts.Medium,
     color: Colors.blackColor,
     textAlign: 'center',
-    // marginTop: 5,
   },
 });
