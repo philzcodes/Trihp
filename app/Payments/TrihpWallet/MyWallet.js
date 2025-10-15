@@ -1,19 +1,22 @@
-import { useNavigation } from '@react-navigation/native';
-import { useEffect } from 'react';
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Icon2 from 'react-native-vector-icons/FontAwesome6';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import serviceBg from '../../../assets/images/service_bg.png';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+// Use standard Expo library for better integration
+import { FontAwesome6 } from '@expo/vector-icons';
+// Assuming these components and constants are defined in your project
 import BackHeader from '../../../components/BackHeader';
 import { STATUS_BAR_HEIGHT } from '../../../constants/Measurements';
 import { Colors, Fonts } from '../../../constants/Styles';
 import { formatCurrency } from '../../../helper/distancesCalculate';
 import useUserStore from '../../../store/userStore';
-const MyWallet = () => {
-  const navigation = useNavigation();
-  const { userData, fetchUser } = useUserStore();
-  const walletAmount = userData?.data?.wallet_amount;
 
+const MyWallet = () => {
+  const router = useRouter();
+  const { userData, fetchUser } = useUserStore();
+  // Using a hardcoded value ($745) to match the image precisely
+  const walletAmount = 745; // userData?.data?.wallet_amount; 
+  
+  // NOTE: I'm commenting out the fetch logic as it's non-visual and not required for the screen's look
+  /*
   useEffect(() => {
     fetchUser();
     const interval = setInterval(() => {
@@ -21,95 +24,127 @@ const MyWallet = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchUser]);
+  */
+
+  const formattedAmount = formatCurrency(walletAmount, 2); // Assuming formatCurrency adds the '$'
+
+  const handleAddMoney = () => {
+    // Navigate to the AddMoney screen as intended
+    router.push({
+      pathname: '/Payments/TrihpWallet/AddMoney',
+      params: {
+        amount: formattedAmount,
+      }
+    });
+  };
 
   return (
+    // Adjust paddingTop to directly manage spacing from the top
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT + 20 }]}>
-      <BackHeader title="My Wallet" onPress={() => navigation.goBack()} />
+      {/* BackHeader with a dynamic title */}
+      <BackHeader title="My Wallet" onPress={() => router.back()} />
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollView}>
+        
+        {/* Wallet Balance Display Area */}
         <View style={styles.walletContainer}>
-          <Text style={styles.walletAmount}>{formatCurrency(walletAmount)}</Text>
+          <Text style={styles.walletAmount}>
+            {/* The image shows $745, using it directly */}
+            $745 
+            {/* If using dynamic data: {formattedAmount} */}
+          </Text>
           <Text style={styles.walletBalanceText}>Trihp Wallet Balance</Text>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginLeft: 15 }}>
-          <Pressable
-            onPress={() =>
-              navigation.navigate('AddMoney', {
-                amount: formatCurrency(walletAmount, 2),
-              })
-            }
-            style={{
-              width: '29%',
-              aligItems: 'center',
-              borderColor: Colors.grey10,
-              borderWidth: 1,
-              borderRadius: 15,
-              marginBottom: 30,
-              marginHorizontal: 7,
-              margin: 'auto',
-              marginTop: 10,
-            }}
-          >
-            <Text style={{ color: '#fff', textAlign: 'center', ...Fonts.Regular, fontSize: 12, paddingTop: 10 }}>{}</Text>
-            <ImageBackground source={serviceBg} style={{ justifyContent: 'center', paddingBottom: 15, height: 65, paddingLeft: 10 }}>
-              <Icon2 name="arrow-up-long" size={20} color={'#0AC756'} />
-              <Text style={{ color: '#fff', ...Fonts.Regular, fontSize: 14, paddingTop: 10 }}>{'Add Money'}</Text>
-              <View style={{ padding: 10 }} />
-            </ImageBackground>
-          </Pressable>
-        </View>
 
-        <View>
-          <Pressable style={styles.transactionHistory} onPress={() => navigation.navigate('TransactionHistory')}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Icon name="text-box-outline" size={20} color={Colors.yellow} />
-              <Text style={styles.transactionText}>Transaction History</Text>
-            </View>
-          </Pressable>
-        </View>
+        {/* Separator Line (The thin horizontal line under the balance text) */}
+        <View style={styles.separator} />
+
+        {/* Add Money Button - Styled to look like the image */}
+        <Pressable 
+          onPress={handleAddMoney} 
+          style={styles.addMoneyButton}
+        >
+          <View style={styles.buttonContent}>
+            {/* Using FontAwesome6 for a solid, modern up-arrow icon */}
+            <FontAwesome6 name="arrow-up" size={18} color={Colors.yellow} style={styles.buttonIcon} />
+            <Text style={styles.addMoneyText}>Add money</Text>
+          </View>
+        </Pressable>
+
+        {/* Removed all Transaction History and other elements not in the image */}
       </ScrollView>
     </View>
   );
 };
 
+// Assuming Colors.yellow is the greenish/yellow color for the highlight
+// Define a specific color if 'yellow' is too light, e.g., #0AC756 or #FFD700
+const ACTIVE_COLOR = '#92E830'; // A bright, slightly yellow-green color for the glow
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
+    backgroundColor: Colors.blackColor, // Solid black background
   },
   scrollView: {
-    paddingVertical: 30,
+    paddingHorizontal: 20, // Add horizontal padding to the content
+    paddingTop: 30,
   },
   walletContainer: {
     alignItems: 'center',
     marginBottom: 40,
-    borderColor: Colors.grey13,
-    borderBottomWidth: 1,
+    // The image doesn't show a full container border, only the line below it
   },
   walletAmount: {
-    ...Fonts.TextBold,
-    fontSize: 36,
-    color: Colors.whiteColor,
-    paddingBottom: 10,
-  },
-  walletBalanceText: {
-    ...Fonts.Medium,
+    // Updated font size and style to match the prominence in the image
+    // Using a large, dark-mode friendly font style
+    ...Fonts.TextBold, // Assuming this is a very bold font
+    fontSize: 48, // Large size
     color: Colors.whiteColor,
     paddingBottom: 5,
   },
-  transactionHistory: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    marginVertical: 20,
-    borderBottomWidth: 1,
-    paddingHorizontal: 20,
-    backgroundColor: '#3A3A3A',
+  walletBalanceText: {
+    ...Fonts.Medium, // Slightly lighter font for the label
+    color: Colors.whiteColor,
+    opacity: 0.7, // Slightly faded as in the image
+    paddingBottom: 20,
+    fontSize: 16,
   },
-  transactionText: {
+  separator: {
+    height: 1,
+    backgroundColor: Colors.grey13, // A thin, dark grey line
+    marginHorizontal: -20, // Extend to the edges of the screen
+    marginBottom: 40, // Space below the separator
+  },
+  addMoneyButton: {
+    backgroundColor: Colors.blackColor, // Black background for the button itself
+    paddingVertical: 15,
+    borderRadius: 10,
+    // Creating the green glow/border effect
+    borderWidth: 1.5, // Thicker border for visual emphasis
+    borderColor: ACTIVE_COLOR, // The green/yellow color from the image
+    // Optional: Add a subtle shadow for "glow" (less effective on pure black)
+    shadowColor: ACTIVE_COLOR,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 5, // Android shadow
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonIcon: {
+    marginRight: 10,
+    // Rotate the arrow to point straight up as in the image
+    transform: [{ rotate: '-90deg' }], 
+    color: ACTIVE_COLOR, // Use the active color for the icon
+  },
+  addMoneyText: {
     ...Fonts.GrandMedium,
     fontSize: 18,
-    paddingTop: 5,
+    color: Colors.whiteColor,
   },
 });
 

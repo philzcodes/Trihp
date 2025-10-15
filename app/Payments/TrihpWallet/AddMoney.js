@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Fontisto';
@@ -7,9 +7,9 @@ import TriphButton from '../../../components/TriphButton';
 import { STATUS_BAR_HEIGHT } from '../../../constants/Measurements';
 import { Colors, Fonts } from '../../../constants/Styles';
 
-const AddMoney = ({ route }) => {
-  const amount = route?.params?.amount;
-  const navigation = useNavigation();
+const AddMoney = () => {
+  const router = useRouter();
+  const { amount } = useLocalSearchParams();
   const [price, setPrice] = useState('');
   const isDisabled = !price || parseInt(price, 10) < 20;
 
@@ -25,7 +25,7 @@ const AddMoney = ({ route }) => {
 >
         <View style={styles.header}>
           <View>
-            <BackArrow onPress={() => navigation.goBack()} />
+            <BackArrow onPress={() => router.back()} />
           </View>
           <Text style={styles.headerText}>Add Money to Trihp wallet</Text>
         </View>
@@ -73,7 +73,13 @@ const AddMoney = ({ route }) => {
           <TriphButton
             text="Add Amount"
             onPress={() => {
-              navigation.navigate('TopUp', { balance: amount, topUpAmount: price });
+              router.push({
+                pathname: '/Payments/TrihpWallet/TopUp',
+                params: { 
+                  balance: amount, 
+                  topUpAmount: price 
+                }
+              });
             }}
             disabled={isDisabled}
             bgColor={{ backgroundColor: isDisabled ? Colors.grey10 : Colors.yellow }}

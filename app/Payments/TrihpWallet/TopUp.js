@@ -7,15 +7,18 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { showSucess } from '../../../helper/Toaster';
 // import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import BackHeader from '../../../components/BackHeader';
 import PaySuccessModal from '../../../components/Modals/PayMethodSuccessModal';
 import TriphButton from '../../../components/TriphButton';
 import { Colors, Fonts } from '../../../constants/Styles';
-const TopUp = ({ route, navigation }) => {
-  const { balance, topUpAmount } = route?.params || {};
+const TopUp = () => {
+  const router = useRouter();
+  const { balance, topUpAmount } = useLocalSearchParams();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
   // const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
   const dummyCardInfo = [
@@ -148,7 +151,7 @@ const TopUp = ({ route, navigation }) => {
   console.log(isModalVisible);
   return (
     <View style={styles.container}>
-      <BackHeader title="Select Top Up Method" onPress={() => navigation.goBack()} />
+      <BackHeader title="Select Top Up Method" onPress={() => router.back()} />
       <View style={{ margin: 20, justifyContent: 'space-between', flex: 1 }}>
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceText}>Current Balance</Text>
@@ -186,7 +189,7 @@ const TopUp = ({ route, navigation }) => {
             </Text>
           }
           ListEmptyComponent={
-            <TouchableOpacity onPress={() => navigation.navigate('AddPayMethods')}>
+            <TouchableOpacity onPress={() => router.push('/Payments/AddPayMethods')}>
               <Text style={styles.addPaymentText}>Add Payment</Text>
             </TouchableOpacity>
           }

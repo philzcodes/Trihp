@@ -138,14 +138,19 @@ const Payment = () => {
                 <Text style={styles.walletAmount}>{formatCurrency(walletAmount, 0)}</Text>
                 <Pressable
                     style={styles.addButton}
-                    onPress={() => router.push('/Payments/AddMoney', { amount: formatCurrency(walletAmount, 2 || 0) })}
+                    onPress={() => router.push({
+                        pathname: '/Payments/TrihpWallet/AddMoney',
+                        params: { amount: formatCurrency(walletAmount, 2 || 0) }
+                    })}
                 >
                     <Feather name="plus" size={20} color={Colors.whiteColor} /> 
                     <Text style={styles.addButtonText}>Add Money</Text>
                 </Pressable>
             </View>
             {/* The small chevron on the right side of the card */}
-            <AntDesign name="right" size={20} color={Colors.whiteColor} style={styles.walletChevron} />
+           <Pressable onPress={() => router.push('/Payments/TrihpWallet/MyWallet')} style={styles.walletChevron}>
+                <AntDesign name="right" size={20} color={Colors.whiteColor} />
+           </Pressable>
         </Pressable>
     );
 
