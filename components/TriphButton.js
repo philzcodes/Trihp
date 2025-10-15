@@ -1,46 +1,52 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors, Fonts } from '../constants';
 
-const TriphButton = (props) => {
-  const backgroundOpacity = props.loading ? 0.6 : 1;
-
+const TriphButton = ({ 
+  text, 
+  onPress, 
+  disabled = false, 
+  loading = false, 
+  bgColor = { backgroundColor: Colors.yellow },
+  textColor = Colors.blackColor 
+}) => {
   return (
-    <View style={{ opacity: backgroundOpacity }}>
-      <TouchableOpacity 
-        style={[styles.container, props.extraStyle, props.bgColor]} 
-        onPress={props?.onPress} 
-        {...props}
-      >
-        {props?.leftIcon && !props.loading ? (
-          <Ionicons name={props?.IconName} size={20} color={Colors.blackColor} />
-        ) : null}
-        {props.loading ? (
-          <ActivityIndicator size="small" color={Colors.blackColor} />
-        ) : (
-          <Text style={[styles.text, { marginLeft: props?.leftIcon ? 10 : 0 }, props?.extraTextStyle]}>
-            {props?.text}
-          </Text>
-        )}
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity
+      style={[
+        styles.button,
+        bgColor,
+        disabled && styles.disabledButton
+      ]}
+      onPress={onPress}
+      disabled={disabled || loading}
+    >
+      {loading ? (
+        <ActivityIndicator color={textColor} />
+      ) : (
+        <Text style={[styles.buttonText, { color: textColor }]}>
+          {text}
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 };
 
 export default TriphButton;
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 15,
-    backgroundColor: Colors.yellow,
-    borderRadius: 50,
+  button: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 8,
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
+    minHeight: 50,
   },
-  text: {
-    ...Fonts.TextBold,
-    color: Colors.blackColor,
+  disabledButton: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    ...Fonts.Medium,
+    fontSize: 16,
   },
 });

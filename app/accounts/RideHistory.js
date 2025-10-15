@@ -1,290 +1,227 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Entypo } from '@expo/vector-icons';
+import { router, useRouter } from 'expo-router';
+import React from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BackButton } from '../../components';
-import { Colors, Fonts } from '../../constants';
+import { Colors } from '../../constants'; // Assuming these are defined
+
+// --- MOCK DATA ---
+// Data is simplified to match the elements visible in the screenshot
+const MOCK_RIDE_HISTORY = [
+  {
+    id: '1',
+    vehicle_type: 'car', // Used for icon selection
+    location: 'Main Peninsular Rd',
+    dateTime: '26 Sept - 10:00AM',
+    status: 'completed',
+    amount: '$25',
+  },
+  {
+    id: '2',
+    vehicle_type: 'tuk-tuk',
+    location: 'Main Peninsular Rd',
+    dateTime: '26 Sept - 10:00AM',
+    status: 'canceled',
+    amount: null, // Canceled rides usually don't show a price
+  },
+  {
+    id: '3',
+    vehicle_type: 'bike',
+    location: 'Main Peninsular Rd',
+    dateTime: '26 Sept - 10:00AM',
+    status: 'completed',
+    amount: '$25',
+  },
+  // Add more items here if needed for scrolling demonstration
+];
+
+/**
+ * Helper to get the icon (simulated with emojis) or a custom image placeholder.
+ * In a real app, this would return an <Image /> or <Svg /> component.
+ */
+const getVehicleIcon = (type) => {
+  switch (type) {
+    case 'car':
+      // The image shows a detailed white car illustration
+      // For simulation, we use a custom component structure with a placeholder text/emoji
+      return { source: '🚗', style: styles.carIconPlaceholder };
+    case 'tuk-tuk':
+      // The image shows a detailed yellow/green tuk-tuk
+      return { source: '🛺', style: styles.tukTukIconPlaceholder };
+    case 'bike':
+      // The image shows a detailed yellow motorbike
+      return { source: '🏍️', style: styles.bikeIconPlaceholder };
+    default:
+      return { source: '❓', style: styles.defaultIconPlaceholder };
+  }
+};
+
+/**
+ * Renders a single ride history item, closely matching the screenshot layout.
+ */
+const RideHistoryItem = ({ item }) => {
+  const icon = getVehicleIcon(item.vehicle_type);
+  const isCompleted = item.status === 'completed';
+
+  return (
+    <Pressable style={styles.itemContainer} onPress={() => router.push('/accounts/RideDetailsScreen')}>
+      
+      {/* Vehicle Icon / Image Placeholder */}
+      <View style={styles.iconWrapper}>
+        {/* Placeholder for the custom vehicle image */}
+        <Text style={[styles.vehicleIcon, icon.style]}>
+            {icon.source}
+        </Text>
+      </View>
+
+      {/* Text Details (Location, Date, Status) */}
+      <View style={styles.textContainer}>
+        <Text style={styles.primaryText}>{item.location}</Text>
+        <Text style={styles.secondaryText}>{item.dateTime}</Text>
+        <Text 
+          style={[
+            styles.statusText,
+            { color: isCompleted ? Colors.greenColor || '#4CAF50' : Colors.redColor || '#E91E63' }
+          ]}
+        >
+          {isCompleted ? 'Completed' : 'Canceled'}
+        </Text>
+      </View>
+
+      {/* Price (on the right) */}
+      {item.amount && (
+        <Text style={styles.amountText}>{item.amount}</Text>
+      )}
+    </Pressable>
+  );
+};
+
 
 const RideHistory = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  // Mock data - in a real app, this would come from an API
-  const [rideHistory] = useState([
-    {
-      id: 1,
-      pickup_location: 'Victoria Island, Lagos',
-      drop_location: 'Ikoyi, Lagos',
-      date: '2024-01-15',
-      time: '14:30',
-      amount: '₦1,200',
-      status: 'completed', // completed, cancelled
-      driver_name: 'John Doe',
-      vehicle_info: 'Toyota Camry - ABC 123 XY',
-    },
-    {
-      id: 2,
-      pickup_location: 'Lekki Phase 1, Lagos',
-      drop_location: 'Surulere, Lagos',
-      date: '2024-01-14',
-      time: '09:15',
-      amount: '₦2,100',
-      status: 'completed',
-      driver_name: 'Jane Smith',
-      vehicle_info: 'Honda Accord - DEF 456 AB',
-    },
-    {
-      id: 3,
-      pickup_location: 'Ikoyi, Lagos',
-      drop_location: 'Victoria Island, Lagos',
-      date: '2024-01-13',
-      time: '18:45',
-      amount: '₦1,500',
-      status: 'cancelled',
-      driver_name: 'Mike Johnson',
-      vehicle_info: 'Nissan Altima - GHI 789 CD',
-    },
-  ]);
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const handleViewDetails = (ride) => {
-    Alert.alert('Ride Details', `Ride ID: ${ride.id}\nDriver: ${ride.driver_name}\nVehicle: ${ride.vehicle_info}`);
-  };
-
-  const handleRideAgain = (ride) => {
-    Alert.alert('Ride Again', `Booking ride from ${ride.pickup_location} to ${ride.drop_location}`);
-    // In a real app, this would navigate to ride selection with pre-filled locations
-  };
-
-  const handleRefresh = () => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-  };
-
-  const renderRideItem = ({ item }) => (
-    <View style={styles.rideItem}>
-      <View style={styles.statusContainer}>
-        <Text style={[
-          styles.statusText,
-          { color: item.status === 'completed' ? Colors.green : Colors.red }
-        ]}>
-          {item.status === 'completed' ? 'Completed' : 'Cancelled'}
-        </Text>
-      </View>
-
-      <View style={styles.routeContainer}>
-        <View style={styles.routeIcon}>
-          <Ionicons name="radio-button-on" size={20} color={Colors.red} />
-          <View style={styles.routeLine} />
-          <Ionicons name="location" size={20} color={Colors.green} />
-        </View>
-        <View style={styles.routeText}>
-          <Text style={styles.pickupText} numberOfLines={2}>
-            {item.pickup_location}
-          </Text>
-          <Text style={styles.dropText} numberOfLines={2}>
-            {item.drop_location}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.rideDetails}>
-        <Text style={styles.dateText}>
-          {formatDate(item.date)} at {item.time}
-        </Text>
-        <Text style={styles.amountText}>{item.amount}</Text>
-      </View>
-
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.viewDetailsButton]}
-          onPress={() => handleViewDetails(item)}
-        >
-          <Text style={styles.viewDetailsText}>View Details</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.rideAgainButton]}
-          onPress={() => handleRideAgain(item)}
-        >
-          <Text style={styles.rideAgainText}>Ride Again</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderEmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="car" size={64} color={Colors.grey14} />
-      <Text style={styles.emptyText}>No ride history found</Text>
-      <Text style={styles.emptySubtext}>Your completed and cancelled rides will appear here</Text>
-    </View>
-  );
 
   return (
-    <SafeAreaView style={styles.container}>
-     
-      <BackButton onPress={() => router.back()} />
+    <SafeAreaView style={styles.container} edges={['top']}> 
       
+      {/* Custom Header matching the screenshot */}
       <View style={styles.header}>
-        <Text style={styles.title}>Ride History</Text>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          {/* Using Entypo for the chevron-left icon */}
+          <Entypo name="chevron-left" size={26} color={Colors.whiteColor || '#FFFFFF'} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Ride History</Text>
       </View>
 
+      {/* Ride History List */}
       <FlatList
-        data={rideHistory}
-        renderItem={renderRideItem}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={handleRefresh}
-        ListEmptyComponent={renderEmptyComponent}
+        data={MOCK_RIDE_HISTORY}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <RideHistoryItem item={item} />}
+        contentContainerStyle={styles.listContent}
+        // Use a separator component to ensure a clean line between items
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
+      
     </SafeAreaView>
   );
 };
 
-export default RideHistory;
-
+// --- STYLESHEET ---
 const styles = StyleSheet.create({
+  // --- Global Styles ---
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
+    backgroundColor: Colors.blackColor || '#000000', // Deep black background
   },
+  
+  // --- Header Styles ---
   header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    // No bottom border visible in the image
+  },
+  backButton: {
+    paddingRight: 10,
+    paddingVertical: 5, 
+  },
+  headerTitle: {
+    // Looks to be around 20-22px and bold/semi-bold
+    fontSize: 22,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '700', // Bold/Extra-bold to match the image title
+    marginLeft: 10,
+  },
+  
+  // --- List and Item Styles ---
+  listContent: {
+    paddingHorizontal: 15,
+    paddingTop: 10,
     paddingBottom: 20,
   },
-  title: {
-    ...Fonts.TextBold,
-    fontSize: 24,
-    color: Colors.whiteColor,
+  separator: {
+    height: StyleSheet.hairlineWidth * 1.5, // Slightly thicker than hairlineWidth
+    backgroundColor: Colors.separatorColor || '#222222', // Very dark grey separator
   },
-  listContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  rideItem: {
-    backgroundColor: Colors.grey11,
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: Colors.grey10,
-  },
-  statusContainer: {
-    marginBottom: 15,
-  },
-  statusText: {
-    ...Fonts.Medium,
-    fontSize: 14,
-  },
-  routeContainer: {
+  itemContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    alignItems: 'center',
+    paddingVertical: 15,
   },
-  routeIcon: {
+  
+  // Placeholder for Vehicle Icon/Image
+  iconWrapper: {
+    width: 60, // Fixed width for the icon area
+    height: 60,
+    justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
-    paddingVertical: 5,
+    // Placeholder background/border is not strictly needed but helps visualize the area
   },
-  routeLine: {
-    width: 2,
-    height: 40,
-    backgroundColor: Colors.grey14,
-    marginVertical: 5,
+  vehicleIcon: {
+    fontSize: 40, // Large font size for emoji icons
   },
-  routeText: {
+  // You would remove these placeholders and replace with <Image> or <Svg>
+  carIconPlaceholder: {
+    fontSize: 40, 
+  },
+  tukTukIconPlaceholder: {
+    fontSize: 40,
+  },
+  bikeIconPlaceholder: {
+    fontSize: 40,
+  },
+
+  // Text details
+  textContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  pickupText: {
-    ...Fonts.Regular,
-    fontSize: 14,
-    color: Colors.whiteColor,
-    marginBottom: 5,
-  },
-  dropText: {
-    ...Fonts.Regular,
-    fontSize: 14,
-    color: Colors.whiteColor,
-  },
-  rideDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.grey10,
-  },
-  dateText: {
-    ...Fonts.Regular,
-    fontSize: 13,
-    color: Colors.grey14,
-  },
-  amountText: {
-    ...Fonts.TextBold,
+  primaryText: {
     fontSize: 16,
-    color: Colors.whiteColor,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '600', // Semi-bold for the main address line
+    marginBottom: 4,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
+  secondaryText: {
+    fontSize: 13,
+    color: Colors.lightGreyColor || '#AAAAAA',
+    fontWeight: '400', // Regular weight
+    marginBottom: 4,
   },
-  actionButton: {
-    flex: 1,
-    height: 45,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewDetailsButton: {
-    backgroundColor: Colors.yellow,
-  },
-  rideAgainButton: {
-    backgroundColor: Colors.grey14,
-  },
-  viewDetailsText: {
-    ...Fonts.TextBold,
+  statusText: {
     fontSize: 14,
-    color: Colors.blackColor,
+    fontWeight: '700', // Bold status text
   },
-  rideAgainText: {
-    ...Fonts.TextBold,
-    fontSize: 14,
-    color: Colors.blackColor,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    ...Fonts.TextBold,
+  
+  // Price
+  amountText: {
     fontSize: 18,
-    color: Colors.whiteColor,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  emptySubtext: {
-    ...Fonts.Regular,
-    fontSize: 14,
-    color: Colors.grey14,
-    textAlign: 'center',
-    paddingHorizontal: 40,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '700', // Bold price text
+    marginLeft: 10,
   },
 });
+
+export default RideHistory;

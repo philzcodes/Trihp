@@ -1,210 +1,169 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Entypo, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Fonts } from '../../constants';
+import { Colors } from '../../constants'; // Assuming these are defined
 
-const Help = () => {
+// --- MOCK DATA ---
+const TOPICS_DATA = [
+  { id: '1', title: 'Help with ride' },
+  { id: '2', title: 'Account' },
+  { id: '3', title: 'Introduction to Trihp' },
+];
+
+/**
+ * Renders a single topic row item (bullet-point style).
+ */
+const TopicItem = ({ title, onPress }) => (
+  <Pressable style={styles.topicItemContainer} onPress={onPress}>
+    <View style={styles.bulletPoint} />
+    <Text style={styles.topicTitleText}>{title}</Text>
+    {/* Using Entypo for the chevron-right icon, which is thin and sharp */}
+    <Entypo name="chevron-right" size={24} color={Colors.lightGreyColor || '#AAAAAA'} />
+  </Pressable>
+);
+
+const HelpCenterScreen = () => {
   const router = useRouter();
 
-  const helpTopics = [
-    {
-      id: 1,
-      title: 'Getting Started',
-      description: 'Learn how to use Trihp',
-      icon: 'help-circle',
-    },
-    {
-      id: 2,
-      title: 'Payment Issues',
-      description: 'Troubleshoot payment problems',
-      icon: 'credit-card',
-    },
-    {
-      id: 3,
-      title: 'Ride Problems',
-      description: 'Report issues with rides',
-      icon: 'car',
-    },
-    {
-      id: 4,
-      title: 'Account Support',
-      description: 'Manage your account',
-      icon: 'account',
-    },
-    {
-      id: 5,
-      title: 'Contact Support',
-      description: 'Get in touch with our team',
-      icon: 'message',
-    },
-  ];
+  const handleTopicPress = (topic) => {
+    console.log(`Navigating to topic: ${topic}`);
+    // In a real app, this would navigate to the FAQ/Article screen
+  };
+
+  const handleMessagesPress = () => {
+    console.log('Navigating to Messages/Chat History');
+    // In a real app, this would navigate to the support message history screen
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Help & Support</Text>
-      </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>How can we help you?</Text>
-          <Text style={styles.welcomeDescription}>
-            Find answers to common questions or contact our support team.
-          </Text>
-        </View>
+      {/* Header matching the screenshot */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          {/* Using Entypo for the chevron-left icon */}
+          <Entypo name="chevron-left" size={26} color={Colors.whiteColor || '#FFFFFF'} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Help Center</Text>
+      </View>
 
-        <View style={styles.topicsContainer}>
-          {helpTopics.map((topic) => (
-            <Pressable key={topic.id} style={styles.topicItem}>
-              <View style={styles.topicIcon}>
-                <MaterialCommunityIcons name={topic.icon} size={24} color={Colors.yellow} />
-              </View>
-              <View style={styles.topicContent}>
-                <Text style={styles.topicTitle}>{topic.title}</Text>
-                <Text style={styles.topicDescription}>{topic.description}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.whiteColor} />
-            </Pressable>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* --- Topics Section --- */}
+        <Text style={styles.sectionHeader}>Topics</Text>
+        <View style={styles.topicsList}>
+          {TOPICS_DATA.map((topic) => (
+            <TopicItem 
+              key={topic.id} 
+              title={topic.title} 
+              onPress={() => handleTopicPress(topic.title)}
+            />
           ))}
         </View>
 
-        <View style={styles.contactSection}>
-          <Text style={styles.contactTitle}>Still need help?</Text>
-          <Text style={styles.contactDescription}>
-            Contact our support team directly
-          </Text>
-          
-          <View style={styles.contactMethods}>
-            <Pressable style={styles.contactMethod}>
-              <MaterialCommunityIcons name="email" size={20} color={Colors.yellow} />
-              <Text style={styles.contactMethodText}>support@trihp.com</Text>
-            </Pressable>
-            
-            <Pressable style={styles.contactMethod}>
-              <MaterialCommunityIcons name="phone" size={20} color={Colors.yellow} />
-              <Text style={styles.contactMethodText}>+1 (555) 123-4567</Text>
-            </Pressable>
+        {/* --- Messages Section --- */}
+        <Text style={styles.sectionHeader}>Messages</Text>
+        <Pressable style={styles.messageItemContainer} onPress={handleMessagesPress}>
+          <View style={styles.messageIconContainer}>
+            {/* Using MaterialCommunityIcons for the chat icon */}
+            <MaterialCommunityIcons name="message-text-outline" size={20} color={Colors.whiteColor || '#FFFFFF'} />
           </View>
-        </View>
+          <Text style={styles.messageText}>Messages</Text>
+          {/* Note: The message item does NOT have a chevron-right in the image, but I'll add a subtle one for UI convention if needed */}
+        </Pressable>
+
+        {/* Padding for ScrollView */}
+        <View style={{ height: 50 }} />
       </ScrollView>
+      
     </SafeAreaView>
   );
 };
 
+// --- STYLESHEET ---
 const styles = StyleSheet.create({
+  // --- Global Styles ---
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
+    backgroundColor: Colors.blackColor || '#000000', // Deep black background
   },
+  
+  // --- Header Styles ---
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteColor,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+  },
+  backButton: {
+    paddingRight: 10,
+    paddingVertical: 5, 
   },
   headerTitle: {
-    ...Fonts.Regular,
-    fontSize: 24,
-    color: Colors.whiteColor,
-    fontWeight: 'bold',
+    fontSize: 22,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '700', // Bold/Extra-bold to match the image title
+    marginLeft: 10,
   },
+  
+  // --- Content and Sections ---
   content: {
     flex: 1,
-    padding: 20,
   },
-  welcomeSection: {
-    marginBottom: 30,
-  },
-  welcomeTitle: {
-    ...Fonts.Regular,
-    fontSize: 20,
-    color: Colors.whiteColor,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  welcomeDescription: {
-    ...Fonts.Regular,
+  sectionHeader: {
     fontSize: 14,
-    color: Colors.whiteColor,
-    opacity: 0.7,
-    lineHeight: 20,
+    color: Colors.lightGreyColor || '#AAAAAA',
+    fontWeight: '500',
+    paddingHorizontal: 20,
+    marginTop: 25, // Vertical spacing above the section title
+    marginBottom: 10,
   },
-  topicsContainer: {
-    marginBottom: 30,
+  topicsList: {
+    // No explicit background for this list section
   },
-  topicItem: {
+  topicItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#171717',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.whiteColor,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth, // Subtle separator line
+    borderBottomColor: Colors.separatorColor || '#333333',
   },
-  topicIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.blackColor,
-    borderWidth: 1,
-    borderColor: Colors.yellow,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.whiteColor || '#FFFFFF',
+    marginRight: 15,
   },
-  topicContent: {
+  topicTitleText: {
     flex: 1,
-  },
-  topicTitle: {
-    ...Fonts.Regular,
-    fontSize: 16,
-    color: Colors.whiteColor,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  topicDescription: {
-    ...Fonts.Regular,
-    fontSize: 14,
-    color: Colors.whiteColor,
-    opacity: 0.7,
-  },
-  contactSection: {
-    backgroundColor: '#171717',
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.whiteColor,
-  },
-  contactTitle: {
-    ...Fonts.Regular,
     fontSize: 18,
-    color: Colors.whiteColor,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '500',
   },
-  contactDescription: {
-    ...Fonts.Regular,
-    fontSize: 14,
-    color: Colors.whiteColor,
-    opacity: 0.7,
-    marginBottom: 20,
-  },
-  contactMethods: {
-    gap: 12,
-  },
-  contactMethod: {
+
+  // --- Messages Item (Highlighted) ---
+  messageItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: Colors.darkHighlight || '#1C1C1C', // Dark background for the highlight
+    // No bottom border for the last item in this group
   },
-  contactMethodText: {
-    ...Fonts.Regular,
-    fontSize: 16,
-    color: Colors.whiteColor,
+  messageIconContainer: {
+    marginRight: 15,
+    // The image icon doesn't have a background circle, just the icon
+  },
+  messageText: {
+    fontSize: 18,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontWeight: '500',
+    flex: 1, // Ensures text takes up space
   },
 });
 
-export default Help;
+export default HelpCenterScreen;
