@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Image } from 'react-native';
@@ -8,15 +9,25 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.yellow,
-        tabBarInactiveTintColor: '#666',
+        tabBarInactiveTintColor: '#ffffff',
         tabBarStyle: {
-          backgroundColor: Colors.blackColor,
-          borderTopWidth: 1,
-          borderTopColor: Colors.whiteColor,
+          backgroundColor: 'transparent',
+          // borderTopWidth: 1,
+          // borderTopColor: Colors.whiteColor,
           height: 80,
           paddingBottom: 10,
           paddingTop: 10,
+          elevation: 0,
+          shadowOpacity: 0,
         },
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={['#292929', '#8F8F8F']}
+            style={{ flex: 1 }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+        ),
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',

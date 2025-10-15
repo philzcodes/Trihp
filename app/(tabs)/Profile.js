@@ -18,7 +18,7 @@ const AccountScreen = () => {
     const navigateToLegal = () => { router.push('/accounts/Legal'); };
     const navigateToHelpCenter = () => { router.push('/accounts/Help'); };
     const navigateToRideHistory = () => { router.push('/accounts/RideHistory'); };
-    const navigateToReferAFriend = () => { console.log('Navigate to Refer a friend'); };
+    const navigateToReferAFriend = () => { router.push('/accounts/Refer'); };
     const navigateToDriveAndEarn = () => { console.log('Navigate to Drive & earn with Trihp'); };
     const navigateToChangePassword = () => { router.push('/accounts/ChangePassword'); };
 
