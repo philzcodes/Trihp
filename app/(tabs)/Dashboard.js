@@ -59,7 +59,7 @@ const Dashboard = () => {
 
   // Direct search navigation
   const handleSearchPress = () => {
-    router.push('/search', { 
+    router.push('/booking/SearchScreen', { 
       rides: recentRide,
       initialRegion: {
         latitude: 40.7128,
@@ -122,7 +122,7 @@ const Dashboard = () => {
             return;
           }
           
-          router.push('/ride-selection', {
+          router.push('/booking/RideSelection', {
             info: {
               originLocation: item.pickup_location_name,
               destinationLocation: item.drop_location_name,

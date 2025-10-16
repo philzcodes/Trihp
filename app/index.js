@@ -19,7 +19,7 @@ const Index = () => {
           router.replace('/Dashboard');
         } else {
           // User is not logged in, redirect to splash screen
-          router.replace('/Splash');
+          router.replace('/booking/SearchScreen');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
