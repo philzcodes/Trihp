@@ -92,7 +92,7 @@ const Payment = () => {
 
     const handleCardPress = (item) => {
         // Navigation logic
-        router.push('/Payments/AddPayMethods');
+        router.push('/Payments/ManageMobileMoney');
     };
     
     // --- Helper Components for Cleanliness ---
