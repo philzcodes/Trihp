@@ -26,7 +26,6 @@ const Fonts = {
 };
 
 
-// --- Component Definition ---
 
 const Payment = () => {
     const router = useRouter();
@@ -121,7 +120,7 @@ const Payment = () => {
             </View>
             <Pressable 
                 style={styles.notificationButton} 
-                onPress={() => router.push('/Payments/TransactionHistory')}
+                onPress={() => router.push('/Payments/PayOutstanding')}
             >
                 <Text style={styles.notificationButtonText}>Details</Text>
             </Pressable>
