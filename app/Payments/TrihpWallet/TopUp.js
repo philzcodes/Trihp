@@ -1,208 +1,196 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlatList, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Constant from '../../../helper/Constant';
-// import querystring from 'querystring';
-import axios from 'axios';
-// import { useStripe } from '@stripe/stripe-react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { showSucess } from '../../../helper/Toaster';
-// import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import BackHeader from '../../../components/BackHeader';
-import PaySuccessModal from '../../../components/Modals/PayMethodSuccessModal';
+import { FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import InsufficientFundsModal from '../../../components/Modals/InsufficientFundsModal';
+import PaySuccessModal from '../../../components/Modals/PaySuccessModal';
 import TriphButton from '../../../components/TriphButton';
-import { Colors, Fonts } from '../../../constants/Styles';
+import { STATUS_BAR_HEIGHT } from '../../../constants/Measurements';
+import { Colors } from '../../../constants/Styles';
+import { showSucess } from '../../../helper/Toaster';
+
 const TopUp = () => {
   const router = useRouter();
   const { balance, topUpAmount } = useLocalSearchParams();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-
-  // const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [isInsufficientFundsModalVisible, setIsInsufficientFundsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const dummyCardInfo = [
     {
       id: '1',
-      type: 'mastercard',
-      cardNumber: '4444',
-      image: require('../../../assets/images/paymentMode/mastercard.png'),
+      type: 'Afrimoney',
+      cardNumber: '2345',
+      image: require('../../../assets/images/paymentMode/afrimoney.png'),
       expiryDate: '12/23',
       holder: 'Stephen',
     },
     {
       id: '2',
       type: 'Afrimoney',
-      cardNumber: '5555',
+      cardNumber: '9873',
       image: require('../../../assets/images/paymentMode/afrimoney.png'),
       expiryDate: '12/23',
       holder: 'Stephen',
     },
-    // Add more dummy data if needed
   ];
-
-  const fetchPaymentSheetParams = async () => {
-    const user = await AsyncStorage.getItem('userDetail');
-    const token = JSON.parse(user)?.token;
-    const param = {
-      amount: topUpAmount,
-      currency: 'USD',
-    };
-
-    console.log('price', topUpAmount);
-    const url = Constant.baseUrl + 'wallet-recharge';
-    try {
-      const response = await axios.post(url, querystring.stringify(param), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: '*/*',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response?.status === 200) {
-        const { ephemeralKey, paymentIntent, stripe_customer_id } = response?.data;
-        return {
-          paymentIntent,
-          ephemeralKey,
-          stripe_customer_id,
-        };
-      }
-    } catch (error) {
-      console.error('Error fetching payment sheet params:', error?.response?.data);
-    }
-  };
-
-  //   const onConfirmStripe = async () => {
-  //     setLoading(true);
-  //     const { paymentIntent, ephemeralKey, stripe_customer_id } = await fetchPaymentSheetParams();
-  //     const { error } = await initPaymentSheet({
-  //       merchantDisplayName: 'Trihp Inc.',
-  //       customerId: stripe_customer_id,
-  //       customerEphemeralKeySecret: ephemeralKey,
-  //       paymentIntentClientSecret: paymentIntent,
-  //       allowsDelayedPaymentMethods: true,
-  //       defaultBillingDetails: {
-  //         name: 'Trihp',
-  //       },
-  //     });
-  //     if (!error) {
-  //       const presentResult = await presentPaymentSheet();
-  //       if (presentResult.error) {
-  //         setLoading(false);
-  //         console.log('error h payment me');
-  //       } else {
-  //         const user = await AsyncStorage.getItem('userDetail');
-  //         const token = JSON.parse(user)?.token;
-  //         const param = {
-  //           paymentIntentId: paymentIntent,
-  //         };
-  //         const url = Constant.baseUrl + 'payment-status';
-  //         try {
-  //           console.log("it's working");
-  //           const response = await axios.post(url, querystring.stringify(param), {
-  //             headers: {
-  //               'Content-Type': 'application/x-www-form-urlencoded',
-  //               Accept: '*/*',
-  //               Authorization: `Bearer ${token}`,
-  //             },
-  //           });
-  //           if (response?.status === 200) {
-  //             setPrice('');
-  //             showSucess(response?.data?.message);
-  //             navigation.goBack();
-  //           }
-  //         } catch (error) {
-  //           setLoading(false);
-  //           console.error('Error fetching payment sheet params:', error?.response?.data);
-  //         }
-  //       }
-  //     }
-  //   };
 
   const onConfirmPayment = async () => {
     setLoading(true);
-    const user = await AsyncStorage.getItem('userDetail');
-    const token = JSON.parse(user)?.token;
-    const param = {
-      amount: topUpAmount,
-      currency: 'USD',
-      paymentMethod: selectedPaymentMethod?.type,
-    };
-
-    const url = Constant.baseUrl + 'process-payment';
-    try {
-      const response = await axios.post(url, param, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: '*/*',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response?.status === 200) {
-        setLoading(false);
-        setIsModalVisible(true);
-        showSucess(response?.data?.message);
-      }
-    } catch (error) {
+    
+    // Mock API call - simulate network delay and random success/failure
+    setTimeout(() => {
       setLoading(false);
-      console.error('Error processing payment:', error?.response?.data);
-    }
+      
+      // Simulate random success/failure (70% success rate)
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        setIsSuccessModalVisible(true);
+        showSucess('Top-up successful! Your wallet has been credited.');
+      } else {
+        setIsInsufficientFundsModalVisible(true);
+      }
+    }, 2000); // 2 second delay to simulate API call
+    
+    // Original API call code (commented out for testing)
+    
+    // const user = await AsyncStorage.getItem('userDetail');
+    // const token = JSON.parse(user)?.token;
+    // const param = {
+    //   amount: topUpAmount,
+    //   currency: 'USD',
+    //   paymentMethod: selectedPaymentMethod?.type,
+    // };
+
+    // const url = Constant.baseUrl + 'process-payment';
+    // try {
+    //   const response = await axios.post(url, param, {
+    //     headers: {
+    //       'Content-Type': 'application/x-www-form-urlencoded',
+    //       Accept: '*/*',
+    //       Authorization: `Bearer ${token}`,
+    //     },
+    //   });
+    //   if (response?.status === 200) {
+    //     setLoading(false);
+    //     setIsModalVisible(true);
+    //     showSucess(response?.data?.message);
+    //   }
+    // } catch (error) {
+    //   setLoading(false);
+    //   console.error('Error processing payment:', error?.response?.data);
+    // }
+    
   };
-  console.log(isModalVisible);
+
+  const renderPaymentMethod = ({ item }) => {
+    const isSelected = selectedPaymentMethod?.id === item?.id;
+    
+    return (
+      <Pressable 
+        style={styles.paymentMethodCard} 
+        onPress={() => setSelectedPaymentMethod(item)}
+        android_ripple={{ color: 'rgba(255, 255, 255, 0.1)' }}
+      >
+        <View style={styles.paymentMethodContent}>
+          <Image source={item.image} style={styles.paymentMethodImage} resizeMode="contain" />
+          <View style={styles.paymentMethodInfo}>
+            <Text style={styles.paymentMethodName}>{item.type}</Text>
+            <Text style={styles.paymentMethodNumber}>***{item.cardNumber}</Text>
+          </View>
+        </View>
+        <View style={styles.radioButtonContainer}>
+          {isSelected ? (
+            <View style={styles.radioButtonSelected}>
+              <View style={styles.radioButtonInner} />
+            </View>
+          ) : (
+            <View style={styles.radioButtonUnselected} />
+          )}
+        </View>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <BackHeader title="Select Top Up Method" onPress={() => router.back()} />
-      <View style={{ margin: 20, justifyContent: 'space-between', flex: 1 }}>
-        <View style={styles.balanceContainer}>
-          <Text style={styles.balanceText}>Current Balance</Text>
-          <Text style={styles.balanceValue}>{balance}</Text>
-        </View>
-        <Text style={styles.heading}>Choose a top up method to add money to your Trihp wallet</Text>
-        <FlatList
-          data={dummyCardInfo}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable style={styles.paymentMethodContainer} onPress={() => setSelectedPaymentMethod(item)}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Image source={item.image} style={{ height: 34, width: 34 }} />
-                <Text style={{ ...Fonts.Regular, textTransform: 'capitalize', fontSize: 14 }}>{`${item.type} ${
-                  item.type == 'mastercard' ? `******${item.cardNumber}` : ''
-                }`}</Text>
-              </View>
-              <Icon
-                name={selectedPaymentMethod?.id === item?.id ? 'radiobox-marked' : 'radiobox-blank'}
-                size={22}
-                color={Colors.whiteColor}
-              />
-            </Pressable>
-          )}
-          ListHeaderComponent={
-            <Text
-              style={{
-                ...Fonts.Regular,
-                color: Colors.whiteColor,
-                paddingVertical: 10,
-                fontSize: 16,
-              }}
-            >
-              Options
-            </Text>
-          }
-          ListEmptyComponent={
-            <TouchableOpacity onPress={() => router.push('/Payments/AddPayMethods')}>
-              <Text style={styles.addPaymentText}>Add Payment</Text>
-            </TouchableOpacity>
-          }
-        />
-        <TriphButton
-          text="Proceed"
-          onPress={onConfirmPayment}
-          loading={loading}
-          disabled={!selectedPaymentMethod}
-          bgColor={{ backgroundColor: selectedPaymentMethod ? Colors.yellow : Colors.grey10 }}
-        />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Select top up Method</Text>
+        <View style={styles.headerPlaceholder} />
       </View>
-      <PaySuccessModal isVisible={isModalVisible} onClose={() => setIsModalVisible(false)} amount={topUpAmount} />
+
+      <View style={styles.contentContainer}>
+        {/* Current Balance Section */}
+        <View style={styles.balanceSection}>
+          <View style={styles.balanceContainer}>
+            <Text style={styles.balanceLabel}>Current Balance</Text>
+            <Text style={styles.balanceAmount}>${balance || '745'}</Text>
+          </View>
+          <View style={styles.divider} />
+        </View>
+
+        {/* Description Text */}
+        <Text style={styles.descriptionText}>
+          Choose a top up method to add money to your Trihp wallet
+        </Text>
+
+        {/* Options Section */}
+        <View style={styles.optionsSection}>
+          <Text style={styles.optionsTitle}>Options</Text>
+          
+          <FlatList
+            data={dummyCardInfo}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPaymentMethod}
+            contentContainerStyle={styles.paymentMethodsList}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <TouchableOpacity 
+                onPress={() => router.push('/Payments/AddPayMethods')}
+                style={styles.addPaymentButton}
+              >
+                <Text style={styles.addPaymentText}>+ Add Payment Method</Text>
+              </TouchableOpacity>
+            }
+          />
+        </View>
+
+        {/* Proceed Button */}
+        <View style={styles.buttonContainer}>
+          <TriphButton
+            text="Proceed"
+            onPress={onConfirmPayment}
+            loading={loading}
+            disabled={!selectedPaymentMethod}
+            bgColor={{ backgroundColor: selectedPaymentMethod ? Colors.yellow : Colors.grey10 }}
+          />
+        </View>
+      </View>
+
+      <PaySuccessModal 
+        isVisible={isSuccessModalVisible} 
+        onClose={() => {
+          setIsSuccessModalVisible(false);
+          router.back();
+        }} 
+        amount={topUpAmount} 
+      />
+
+      <InsufficientFundsModal 
+        isVisible={isInsufficientFundsModalVisible} 
+        onClose={() => setIsInsufficientFundsModalVisible(false)}
+        onCancel={() => setIsInsufficientFundsModalVisible(false)}
+      />
     </View>
   );
 };
@@ -212,40 +200,156 @@ export default TopUp;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
+    backgroundColor: '#000000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'ios' ? STATUS_BAR_HEIGHT + 10 : STATUS_BAR_HEIGHT + 16,
+    backgroundColor: '#000000',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  headerPlaceholder: {
+    width: 40,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  balanceSection: {
+    marginBottom: 20,
   },
   balanceContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.grey11,
+    paddingBottom: 20,
   },
-  balanceText: {
-    ...Fonts.Medium,
+  balanceLabel: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#FFFFFF',
+  },
+  balanceAmount: {
+    fontSize: 48,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#2A2A2A',
+    width: '100%',
+  },
+  descriptionText: {
     fontSize: 14,
-    color: Colors.whiteColor,
+    fontWeight: '300',
+    color: '#FFFFFF',
+    lineHeight: 20,
+    marginTop: 20,
+    marginBottom: 30,
   },
-  balanceValue: {
-    fontSize: 35,
-    color: Colors.whiteColor,
+  optionsSection: {
+    flex: 1,
   },
-  heading: {
-    ...Fonts.Regular,
-    marginVertical: 20,
-    fontSize: 14,
-    color: Colors.whiteColor,
-    paddingTop: 10,
+  optionsTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    marginBottom: 20,
   },
-  paymentMethodContainer: {
+  paymentMethodsList: {
+    flexGrow: 1,
+  },
+  paymentMethodCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A1A1A',
+  },
+  paymentMethodContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentMethodImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  paymentMethodInfo: {
+    flex: 1,
+  },
+  paymentMethodName: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  paymentMethodNumber: {
+    fontSize: 14,
+    fontWeight: '300',
+    color: '#808080',
+  },
+  radioButtonContainer: {
+    paddingLeft: 16,
+  },
+  radioButtonSelected: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  radioButtonUnselected: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+  },
+  addPaymentButton: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   addPaymentText: {
+    fontSize: 14,
+    fontWeight: '500',
     color: Colors.yellow,
-    textAlign: 'center',
+  },
+  buttonContainer: {
+    paddingVertical: 20,
   },
 });
