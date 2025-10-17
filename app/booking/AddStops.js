@@ -17,14 +17,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/AntDesign';
 import Icon3 from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon2 from 'react-native-vector-icons/MaterialIcons';
+import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
 import { GOOGLE_MAPS_APIKEY } from '../../utils/Api';
-import customMapStyle from '../../utils/Map.json';
 
 // Constants
 const { height, width } = Dimensions.get('window');
@@ -371,27 +370,17 @@ const AddStopsScreen = ({ navigation, route }) => {
         <ScrollView>
           {/* Map Section */}
           <Animated.View style={[styles.mapContainer, { height: mapHeight }]}>
-            <MapView
+            <MapComponent
               ref={mapViewRef}
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
               style={styles.map}
               initialRegion={currentPosition || initialRegion}
               onRegionChangeComplete={handleRegionChangeComplete}
-              customMapStyle={customMapStyle}
-            >
-              {stops.map(
-                (stop) =>
-                  stop.coordinates &&
-                  stop.id !== activeStopId && (
-                    <Marker
-                      key={stop.id}
-                      coordinate={stop.coordinates}
-                      title={stop.id === 1 ? 'Current Location' : `Stop ${stop.id - 1}`}
-                      pinColor={stop.id === 1 ? 'blue' : 'red'}
-                    />
-                  ),
-              )}
-            </MapView>
+              markers={stops.filter(stop => stop.coordinates && stop.id !== activeStopId).map(stop => ({
+                ...stop.coordinates,
+                title: stop.id === 1 ? 'Current Location' : `Stop ${stop.id - 1}`,
+                pinColor: stop.id === 1 ? 'blue' : 'red'
+              }))}
+            />
             <TouchableOpacity
               style={[styles.locationButton, isLocating && styles.disabledButton]}
               onPress={getCurrentLocation}

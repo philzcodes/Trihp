@@ -3,28 +3,24 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
-import Icon3 from 'react-native-vector-icons/Entypo';
-import Icon2 from 'react-native-vector-icons/Ionicons';
-import Icon4 from 'react-native-vector-icons/MaterialCommunityIcons';
-import Pin from '../../assets/images/Pin';
-import Back from '../../assets/svgIcons/Back';
-import { Colors, Fonts } from '../../constants';
+import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MapComponent } from '../../components';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
 import { GOOGLE_MAPS_APIKEY } from '../../utils/Api';
-import customMapStyle from '../../utils/Map.json';
 
 const SearchScreen = ({ route }) => {
   const [stops, setStops] = useState([]);
@@ -40,21 +36,21 @@ const SearchScreen = ({ route }) => {
   const [dropPrediction, setDropPredictions] = useState([]);
   const [destinationCoordinates, setDestinationCoordinates] = useState();
   const [loading, setLoading] = useState(false);
-  const [focusedInput, setFocusedInput] = useState('origin');
+  const [focusedInput, setFocusedInput] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isReturningFromRide, setIsReturningFromRide] = useState(false);
 
-  // Mock recent locations
+  // Mock recent locations - matching the image
   const recentLocations = [
     {
       id: '1',
-      pickup_location_name: 'Times Square, NYC',
-      drop_location_name: 'Los Angeles, CA',
+      name: 'Main Peninsular Rd',
+      address: 'Hamilton Freetown, Sierra Leone.',
     },
     {
       id: '2',
-      pickup_location_name: 'Times Square, NYC',
-      drop_location_name: 'Los Angeles, CA',
+      name: 'Main Peninsular Rd',
+      address: 'Hamilton Freetown, Sierra Leone.',
     },
   ];
 
@@ -75,20 +71,35 @@ const SearchScreen = ({ route }) => {
 
   useEffect(() => {
     if (originCoordinates && destinationCoordinates && originLocation && destinationLocation && !isReturningFromRide) {
-      const distance = haversineDistance(originCoordinates, destinationCoordinates);
-      const details = {
-        originLocation,
-        destinationLocation,
-        originCoordinates,
-        destinationCoordinates,
-        distance,
-        stops,
-      };
+      if (originCoordinates.latitude && originCoordinates.longitude && 
+          destinationCoordinates.latitude && destinationCoordinates.longitude) {
+        const distance = haversineDistance(originCoordinates, destinationCoordinates);
+        const details = {
+          originLocation,
+          destinationLocation,
+          originCoordinates,
+          destinationCoordinates,
+          distance,
+          stops,
+        };
 
-      const timer = setTimeout(() => {
-        router.push('/booking/RideSelection', { info: details });
-      }, 100);
-      return () => clearTimeout(timer);
+        const timer = setTimeout(() => {
+          console.log('SearchScreen: Navigating to RideSelection with details:', details);
+          router.push({
+            pathname: '/booking/RideSelection',
+            params: {
+              ...details,
+              originCoordinates: JSON.stringify(details.originCoordinates),
+              destinationCoordinates: JSON.stringify(details.destinationCoordinates),
+              distance: details.distance.toString(),
+              stops: JSON.stringify(details.stops)
+            }
+          });
+        }, 100);
+        return () => clearTimeout(timer);
+      } else {
+        console.warn('Invalid coordinates structure:', { originCoordinates, destinationCoordinates });
+      }
     }
 
     if (isReturningFromRide) {
@@ -116,7 +127,9 @@ const SearchScreen = ({ route }) => {
       }
 
       let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High
+        accuracy: Location.Accuracy.High,
+        timeout: 10000,
+        maximumAge: 60000
       });
 
       const coordinates = {
@@ -128,17 +141,29 @@ const SearchScreen = ({ route }) => {
 
       setOriginCoordinates(coordinates);
 
-      // Reverse geocoding with Expo
-      let address = await Location.reverseGeocodeAsync(coordinates);
-      if (address.length > 0) {
-        const formattedAddress = [
-          address[0].name,
-          address[0].street,
-          address[0].city,
-          address[0].region,
-          address[0].country
-        ].filter(Boolean).join(', ');
-        setOriginLocation(formattedAddress);
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Reverse geocoding timeout')), 5000)
+        );
+        
+        const geocodePromise = Location.reverseGeocodeAsync(coordinates);
+        const address = await Promise.race([geocodePromise, timeoutPromise]);
+        
+        if (address && address.length > 0) {
+          const formattedAddress = [
+            address[0].name,
+            address[0].street,
+            address[0].city,
+            address[0].region,
+            address[0].country
+          ].filter(Boolean).join(', ');
+          setOriginLocation(formattedAddress);
+        } else {
+          setOriginLocation("Current Location");
+        }
+      } catch (geocodeError) {
+        console.warn('Reverse geocoding failed:', geocodeError);
+        setOriginLocation("Current Location");
       }
     } catch (error) {
       console.warn('Location error:', error);
@@ -199,7 +224,6 @@ const SearchScreen = ({ route }) => {
   const checkLocation = async (address, isOrigin = true) => {
     try {
       if (address) {
-        // Forward geocoding using Google API
         const response = await axios.get(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_APIKEY}`
         );
@@ -230,9 +254,14 @@ const SearchScreen = ({ route }) => {
       setOriginCoordinates(region);
 
       try {
-        // Reverse geocoding with Expo
-        let address = await Location.reverseGeocodeAsync(region);
-        if (address.length > 0) {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Reverse geocoding timeout')), 5000)
+        );
+        
+        const geocodePromise = Location.reverseGeocodeAsync(region);
+        const address = await Promise.race([geocodePromise, timeoutPromise]);
+        
+        if (address && address.length > 0) {
           const formattedAddress = [
             address[0].name,
             address[0].street,
@@ -243,14 +272,17 @@ const SearchScreen = ({ route }) => {
           setOriginLocation(formattedAddress || 'Unknown Address');
         }
       } catch (error) {
-        console.error('Error fetching address for origin:', error);
+        console.warn('Error fetching address for origin:', error.message);
+        // Don't update the location if geocoding fails - keep current location text
       }
     }
   };
 
   const handleRecentLocationPress = (item) => {
-    checkLocation(item.pickup_location_name + ', ' + item.drop_location_name, false);
-    setDestinationLocation(item.drop_location_name);
+    setOriginLocation(item.name);
+    setDestinationLocation(item.address);
+    checkLocation(item.name, true);
+    checkLocation(item.address, false);
   };
 
   const showRecentLocations = !originShowList && !dropShowList && !keyboardVisible;
@@ -259,207 +291,200 @@ const SearchScreen = ({ route }) => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Back />
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerText}>Plan Your Ride</Text>
           <View style={styles.placeholderButton} />
         </View>
 
-        {/* Top Section */}
-        <View style={[styles.inputContainerWrapper, {
-          flex: originLocation || destinationLocation ? 2 : 1,
-        }]}>
-          {/* Input Fields */}
-          <View style={styles.inputsWrapper}>
-            <View style={styles.inputsContainer}>
-              <View style={styles.inputField}>
-                <TextInput
-                  value={originLocation}
-                  placeholder="Current Location"
-                  onChangeText={(text) => {
-                    setOriginLocation(text);
-                    handleOriginSearch(text);
-                    setFocusedInput('origin');
-                  }}
-                  onFocus={() => setFocusedInput('origin')}
-                  selectionColor="#fff"
-                  cursorColor="#fff"
-                  placeholderTextColor="#848484"
-                  style={[styles.textInput, { textAlign: 'left' }]}
-                />
-                {originLocation.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setOriginLocation('');
+        {/* Content Container */}
+        <View style={styles.contentContainer}>
+          {/* Input Section */}
+          <View style={styles.inputSection}>
+            {/* Origin Input */}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                value={originLocation}
+                placeholder="Current Location"
+                onChangeText={(text) => {
+                  setOriginLocation(text);
+                  handleOriginSearch(text);
+                }}
+                onFocus={() => {
+                  setFocusedInput('origin');
+                  setOriginShowList(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    if (originPrediction.length === 0) {
                       setOriginShowList(false);
-                    }}
-                  >
-                    <Icon3 name="circle-with-cross" size={20} color="#848484" />
-                  </TouchableOpacity>
-                )}
-              </View>
+                    }
+                  }, 200);
+                }}
+                selectionColor="#FFFFFF"
+                placeholderTextColor="#6B6B6B"
+                style={styles.textInput}
+              />
+            </View>
 
-              <View style={styles.inputField}>
-                <TextInput
-                  value={destinationLocation}
-                  placeholder="Where to?"
-                  onChangeText={(text) => {
-                    setDestinationLocation(text);
-                    handleDestinationSearch(text);
-                    setFocusedInput('destination');
-                  }}
-                  onFocus={() => {
-                    setDropShowList(true);
-                  }}
-                  onBlur={() => {
+            {/* Destination Input */}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                value={destinationLocation}
+                placeholder="Where to?"
+                onChangeText={(text) => {
+                  setDestinationLocation(text);
+                  handleDestinationSearch(text);
+                }}
+                onFocus={() => {
+                  setFocusedInput('destination');
+                  setDropShowList(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
                     if (dropPrediction.length === 0) {
                       setDropShowList(false);
                     }
-                  }}
-                  selectionColor="#fff"
-                  cursorColor="#fff"
-                  placeholderTextColor="#848484"
-                  style={styles.textInput}
-                />
-                {destinationLocation.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setDestinationLocation('');
-                      setDropShowList(false);
-                    }}
-                  >
-                    <Icon3 name="circle-with-cross" size={20} color="#848484" />
-                  </TouchableOpacity>
-                )}
-              </View>
+                  }, 200);
+                }}
+                selectionColor="#FFFFFF"
+                placeholderTextColor="#6B6B6B"
+                style={styles.textInput}
+              />
             </View>
 
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() =>
-                router.push('/booking/AddStops', {
-                  originCoordinates,
-                  destinationLocation,
-                  originLocation,
-                  existingStops: stops,
-                  key: Date.now(),
-                })
-              }
-            >
-              <Icon2 name="add" size={22} color="#fff" />
-            </TouchableOpacity>
+            {/* Predictions Lists */}
+            {focusedInput === 'origin' && originPrediction.length > 0 && originShowList && (
+              <View style={styles.predictionsContainer}>
+                <FlatList
+                  data={originPrediction}
+                  keyboardShouldPersistTaps="always"
+                  keyExtractor={(item, index) => item?.place_id || index.toString()}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={styles.predictionItem}
+                      onPress={() => {
+                        setOriginLocation(item?.structured_formatting?.main_text || item?.description);
+                        setOriginShowList(false);
+                        checkLocation(item?.description, true);
+                        Keyboard.dismiss();
+                      }}
+                    >
+                      <View style={styles.predictionIconContainer}>
+                        <Icon name="location-sharp" size={18} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.predictionTextContainer}>
+                        <Text style={styles.predictionMainText}>
+                          {item?.structured_formatting?.main_text || 'No address found'}
+                        </Text>
+                        {item?.structured_formatting?.secondary_text && (
+                          <Text style={styles.predictionSecondaryText} numberOfLines={1}>
+                            {item?.structured_formatting?.secondary_text}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  )}
+                />
+              </View>
+            )}
+
+            {focusedInput === 'destination' && dropPrediction.length > 0 && dropShowList && (
+              <View style={styles.predictionsContainer}>
+                <FlatList
+                  data={dropPrediction}
+                  keyboardShouldPersistTaps="always"
+                  keyExtractor={(item, index) => item?.place_id || index.toString()}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={styles.predictionItem}
+                      onPress={() => {
+                        setDestinationLocation(item?.structured_formatting?.main_text || item?.description);
+                        setDropShowList(false);
+                        checkLocation(item?.description, false);
+                        Keyboard.dismiss();
+                      }}
+                    >
+                      <View style={styles.predictionIconContainer}>
+                        <Icon name="location-sharp" size={18} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.predictionTextContainer}>
+                        <Text style={styles.predictionMainText}>
+                          {item?.structured_formatting?.main_text || 'No address found'}
+                        </Text>
+                        {item?.structured_formatting?.secondary_text && (
+                          <Text style={styles.predictionSecondaryText} numberOfLines={1}>
+                            {item?.structured_formatting?.secondary_text}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  )}
+                />
+              </View>
+            )}
+
+            {/* Recent Locations */}
+            {showRecentLocations && (
+              <View style={styles.recentLocationsContainer}>
+                {recentLocations.map((item, index) => (
+                  <View key={item.id}>
+                    <TouchableOpacity 
+                      style={styles.recentLocationItem} 
+                      onPress={() => handleRecentLocationPress(item)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.clockIconContainer}>
+                        <MaterialCommunityIcons name="clock-outline" size={22} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.locationDetailsContainer}>
+                        <Text style={styles.locationName}>{item.name}</Text>
+                        <Text style={styles.locationAddress} numberOfLines={1}>
+                          {item.address}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    {index < recentLocations.length - 1 && <View style={styles.divider} />}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
-          {/* Predictions Lists */}
-          {focusedInput === 'origin' && originPrediction.length > 0 && originShowList && (
-            <View style={styles.listContainer}>
-              <FlatList
-                data={originPrediction}
-                keyboardShouldPersistTaps="always"
-                keyExtractor={(item, index) => item?.id || index.toString()}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.predictionItem}
-                    onPress={() => {
-                      setOriginLocation(item?.structured_formatting?.main_text);
-                      setOriginShowList(false);
-                      checkLocation(item?.description, true);
-                    }}
-                  >
-                    <Icon2 name="location" size={18} color="#fff" />
-                    <View style={styles.predictionTextContainer}>
-                      <Text style={styles.predictionMainText}>{item?.structured_formatting?.main_text || 'No address found'}</Text>
-                      {item?.structured_formatting?.secondary_text && (
-                        <Text style={styles.predictionSecondaryText} numberOfLines={1}>
-                          {item?.structured_formatting?.secondary_text}
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                )}
-                style={styles.predictionList}
-              />
-            </View>
-          )}
-
-          {focusedInput === 'destination' && dropPrediction.length > 0 && dropShowList && (
-            <View style={styles.listContainer}>
-              <FlatList
-                data={dropPrediction}
-                keyExtractor={(item, index) => item?.id || index.toString()}
-                keyboardShouldPersistTaps="always"
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.predictionItem}
-                    onPress={() => {
-                      setDestinationLocation(item?.structured_formatting?.main_text);
-                      setDropShowList(false);
-                      checkLocation(item?.description, false);
-                    }}
-                  >
-                    <Icon2 name="location" size={18} color="#fff" />
-                    <View style={styles.predictionTextContainer}>
-                      <Text style={styles.predictionMainText}>{item?.structured_formatting?.main_text || 'No address found'}</Text>
-                      {item?.structured_formatting?.secondary_text && (
-                        <Text style={styles.predictionSecondaryText} numberOfLines={1}>
-                          {item?.structured_formatting?.secondary_text}
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                )}
-                style={styles.predictionList}
-              />
-            </View>
-          )}
-
-          {/* Recent Locations */}
-          {showRecentLocations && (
-            <View style={styles.recentLocationsContainer}>
-              {recentLocations.map((item) => (
-                <TouchableOpacity key={item.id} style={styles.recentLocationItem} onPress={() => handleRecentLocationPress(item)}>
-                  <View style={styles.clockIconContainer}>
-                    <Icon4 name="clock-outline" size={20} color="#fff" />
-                  </View>
-                  <View style={styles.locationTextContainer}>
-                    <Text style={styles.locationText}>{item.pickup_location_name}</Text>
-                    <Text style={styles.subLocationText}>{item.drop_location_name}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              <View style={styles.separator} />
+          {/* Map Section */}
+          {originCoordinates && (
+            <View style={styles.mapSection}>
+              <View style={styles.mapContainer}>
+                <MapComponent
+                  ref={mapViewRef}
+                  style={styles.map}
+                  region={originCoordinates}
+                  showsUserLocation={true}
+                  followsUserLocation={true}
+                  showsMyLocationButton={false}
+                  zoomControlEnabled={true}
+                  onRegionChangeComplete={handleRegionChange}
+                />
+                {/* Center Pin */}
+                <View style={styles.centerPinContainer}>
+                  <View style={styles.pinCircle} />
+                  <View style={styles.pinStick} />
+                </View>
+              </View>
             </View>
           )}
         </View>
-
-        {/* Map View */}
-        {originCoordinates && (
-          <View style={[styles.mapContainer, { flex: originLocation || destinationLocation ? 2 : 1 }]}>
-            <MapView
-              ref={mapViewRef}
-              customMapStyle={customMapStyle}
-              mapType="standard"
-              showsUserLocation={true}
-              region={originCoordinates}
-              followsUserLocation={true}
-              showsMyLocationButton={false}
-              zoomControlEnabled
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-              style={styles.map}
-              onRegionChangeComplete={handleRegionChange}
-            />
-
-            <View style={styles.pinContainer}>
-              <Pin />
-            </View>
-          </View>
-        )}
 
         <Loader modalVisible={loading} setModalVisible={setLoading} />
       </View>
@@ -470,138 +495,162 @@ const SearchScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingBottom: 16,
+    backgroundColor: '#000000',
   },
   backButton: {
-    padding: 5,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   headerText: {
-    ...Fonts.Regular,
-    fontSize: 18,
-    color: Colors.whiteColor,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   placeholderButton: {
-    width: 30,
+    width: 40,
   },
-  inputContainerWrapper: {
-    paddingHorizontal: 20,
-  },
-  inputsWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputsContainer: {
+  contentContainer: {
     flex: 1,
   },
-  inputField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.grey12,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 10,
+  inputSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    zIndex: 10,
+  },
+  inputWrapper: {
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 12,
   },
   textInput: {
-    flex: 1,
-    ...Fonts.Regular,
-    color: Colors.whiteColor,
-    fontSize: 16,
-    paddingVertical: 0,
+    fontSize: 17,
+    color: '#FFFFFF',
+    fontWeight: '400',
+    padding: 0,
+    margin: 0,
   },
-  addButton: {
-    marginLeft: 10,
-    backgroundColor: Colors.yellow,
-    borderRadius: 10,
-    padding: 10,
-  },
-  listContainer: {
-    maxHeight: 200,
-    backgroundColor: Colors.grey12,
-    borderRadius: 10,
-    marginTop: 5,
-  },
-  predictionList: {
-    padding: 10,
+  predictionsContainer: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    marginTop: 8,
+    maxHeight: 250,
+    overflow: 'hidden',
   },
   predictionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#2C2C2E',
+  },
+  predictionIconContainer: {
+    marginRight: 12,
   },
   predictionTextContainer: {
-    marginLeft: 10,
     flex: 1,
   },
   predictionMainText: {
-    ...Fonts.Regular,
-    color: Colors.whiteColor,
     fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   predictionSecondaryText: {
-    ...Fonts.Regular,
-    color: Colors.grey,
     fontSize: 14,
-    marginTop: 2,
+    fontWeight: '400',
+    color: '#8E8E93',
   },
   recentLocationsContainer: {
-    marginTop: 20,
+    marginTop: 24,
   },
   recentLocationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 16,
   },
   clockIconContainer: {
-    backgroundColor: Colors.grey12,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 14,
   },
-  locationTextContainer: {
+  locationDetailsContainer: {
     flex: 1,
   },
-  locationText: {
-    ...Fonts.Regular,
-    color: Colors.whiteColor,
-    fontSize: 16,
+  locationName: {
+    fontSize: 17,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
-  subLocationText: {
-    ...Fonts.Regular,
-    color: Colors.grey,
-    fontSize: 14,
-    marginTop: 2,
+  locationAddress: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#8E8E93',
   },
-  separator: {
-    height: 1,
-    backgroundColor: Colors.grey11,
-    marginVertical: 10,
+  divider: {
+    height: 0.5,
+    backgroundColor: '#2C2C2E',
+    marginLeft: 62,
+  },
+  mapSection: {
+    flex: 1,
+    marginTop: 16,
   },
   mapContainer: {
-    borderRadius: 20,
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginHorizontal: 20,
-    marginBottom: 20,
+    position: 'relative',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  pinContainer: {
+  centerPinContainer: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginLeft: -15,
-    marginTop: -30,
+    transform: [{ translateX: -12 }, { translateY: -36 }],
+    alignItems: 'center',
+  },
+  pinCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FF3B30',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  pinStick: {
+    width: 2,
+    height: 12,
+    backgroundColor: '#FF3B30',
+    marginTop: -1,
   },
 });
 

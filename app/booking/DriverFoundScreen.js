@@ -3,12 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Linking, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
-import MapViewDirections from 'react-native-maps-directions';
+import { Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Entypo';
 import Icon2 from 'react-native-vector-icons/Ionicons';
+import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
 import { calculateDropOffTime } from '../../helper/calculateDropOffTime';
@@ -16,8 +15,6 @@ import Constant from '../../helper/Constant';
 import { showError, showSucess, showWarning } from '../../helper/Toaster';
 import useBookingStore from '../../store/bookingStore';
 import useUserStore from '../../store/userStore';
-import { GOOGLE_MAPS_APIKEY } from '../../utils/Api';
-import customMapStyle from '../../utils/Map.json';
 
 const DriverFoundScreen = ({ route }) => {
   const data = route?.params?.data;
@@ -247,58 +244,46 @@ const DriverFoundScreen = ({ route }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.blackColor }}>
-      <MapView
+      <MapComponent
         ref={mapRef}
-        customMapStyle={customMapStyle}
-        mapType="standard"
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-        initialRegion={calculateRegion()}
         style={{
           height: mapHeight,
           width: '100%',
         }}
-      >
-        {currentRide?.start_trihp_status == 0 ? (
-          <Marker coordinate={pickupCoordinates} tracksViewChanges={false}>
+        initialRegion={calculateRegion()}
+        originMarker={currentRide?.start_trihp_status == 0 ? {
+          ...pickupCoordinates,
+          customMarker: (
             <Image source={require('../../assets/images/originLocation.png')} style={{ width: 22, height: 30 }} resizeMode="contain" />
-          </Marker>
-        ) : (
-          <Marker coordinate={dropUpCoordinates} tracksViewChanges={false}>
+          )
+        } : {
+          ...dropUpCoordinates,
+          customMarker: (
             <Image source={require('../../assets/images/originLocation.png')} style={{ width: 22, height: 30 }} resizeMode="contain" />
-          </Marker>
-        )}
-        {renderDriverMarker()}
-        {currentRide?.start_trihp_status == 0 ? (
-          <MapViewDirections
-            origin={driverCoordinates}
-            destination={pickupCoordinates}
-            apikey={GOOGLE_MAPS_APIKEY}
-            strokeWidth={6}
-            optimizeWaypoints={true}
-            strokeColor="#000"
-            onReady={(result) => {
-              const duration = result.legs[0].duration.text;
-              setPickupTime(duration);
-            }}
-          />
-        ) : (
-          <MapViewDirections
-            origin={driverCoordinates}
-            destination={dropUpCoordinates}
-            apikey={GOOGLE_MAPS_APIKEY}
-            strokeWidth={6}
-            optimizeWaypoints={true}
-            strokeColor="#000"
-            onReady={(result) => {
-              const duration = result.legs[0].duration.text;
-              const durationParts = duration.split(' ');
-              const durationMins = parseInt(durationParts[0]);
-              setDurationMinutes(durationMins);
-              setDropOffTime(calculateDropOffTime(durationMins));
-            }}
-          />
-        )}
-      </MapView>
+          )
+        }}
+        driverMarkers={[{
+          ...driverCoordinates,
+          customMarker: renderDriverMarker()
+        }]}
+        showDirections={true}
+        originCoordinates={driverCoordinates}
+        destinationCoordinates={currentRide?.start_trihp_status == 0 ? pickupCoordinates : dropUpCoordinates}
+        directionsStrokeWidth={6}
+        directionsStrokeColor="#000"
+        onDirectionsReady={(result) => {
+          if (currentRide?.start_trihp_status == 0) {
+            const duration = result.legs[0].duration.text;
+            setPickupTime(duration);
+          } else {
+            const duration = result.legs[0].duration.text;
+            const durationParts = duration.split(' ');
+            const durationMins = parseInt(durationParts[0]);
+            setDurationMinutes(durationMins);
+            setDropOffTime(calculateDropOffTime(durationMins));
+          }
+        }}
+      />
       <BottomSheet
         ref={bottomSheetModalRef}
         index={0}

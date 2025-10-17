@@ -2,18 +2,18 @@ import Icon from '@expo/vector-icons/AntDesign';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  BackHandler,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    BackHandler,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -113,7 +113,7 @@ const Dashboard = () => {
   // Render Ride Item
   const renderRideItem = ({ item }) => (
     <View style={styles.historyItem}>
-      <Icon name="clockcircle" size={20} color={Colors.whiteColor} />
+      <Icon name="clock-circle" size={20} color={Colors.whiteColor} />
       <TouchableOpacity
         style={styles.historyItemTextContainer}
         onPress={() => {
@@ -122,6 +122,7 @@ const Dashboard = () => {
             return;
           }
           
+          console.log('Dashboard: Navigating to RideSelection with item:', item);
           router.push('/booking/RideSelection', {
             info: {
               originLocation: item.pickup_location_name,

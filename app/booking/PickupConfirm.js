@@ -1,18 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon2 from 'react-native-vector-icons/Ionicons';
 import Back from '../../assets/svgIcons/Back';
+import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
-import Constant from '../../helper/Constant';
 import Loader from '../../helper/Loader';
 import { showWarning } from '../../helper/Toaster';
-import customMapStyle from '../../utils/Map.json';
 
 const PickupCnfrm = ({ route }) => {
   const data = route?.params;
@@ -55,9 +51,11 @@ const PickupCnfrm = ({ route }) => {
   const creatRide = async () => {
     try {
       setLoading(true);
-      const userInfo = await AsyncStorage.getItem('userDetail');
-      const token = JSON.parse(userInfo)?.token;
-      const Url = Constant.baseUrl + Constant.createRide;
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Dummy ride creation - no real API call
       const details = {
         pickup_latitude: originCoordinates?.latitude,
         pickup_longitude: originCoordinates?.longitude,
@@ -66,29 +64,29 @@ const PickupCnfrm = ({ route }) => {
         pickup_location_name: pickupLocation,
         drop_location_name: data?.destinationLocation,
         pay_for: data?.paymentMethod,
-        amount: data?.amount.toFixed(0),
-        distance: data?.distances,
-        ride_category: data?.vehicle_category_id,
-        transaction_id: '',
-        payment_type: data?.paymentMethod,
+        amount: data?.amount?.toFixed(0) || '1000',
+        distance: data?.distances || '5.2',
+        ride_category: data?.vehicle_category_id || '1',
+        transaction_id: 'dummy_transaction_' + Date.now(),
+        payment_type: data?.paymentMethod || 'cash',
       };
-      const response = await axios.post(Url, details, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response?.data?.status == 200) {
-        console.log('response', response?.data);
-        const datas = {
-          ...details,
-          id: response?.data?.some?.id,
-        };
-        router.push('/booking/FetchingRide', { info: datas });
-      } else {
-        throw new Error(response?.data?.message || 'Failed to create ride');
-      }
+      
+      // Simulate successful response
+      console.log('Dummy ride created successfully:', details);
+      
+      const datas = {
+        ...details,
+        id: 'dummy_ride_' + Date.now(),
+        status: 'confirmed',
+        driver_id: 'dummy_driver_123',
+        estimated_arrival: '5-10 minutes',
+      };
+      
+      // Navigate to next screen with dummy data
+      router.push('/booking/FetchingRide', { info: datas });
+      
     } catch (error) {
-      console.error('Error creating ride:', error?.response?.data);
+      console.error('Error in dummy ride creation:', error);
       showWarning('Failed to create ride');
     } finally {
       setLoading(false);
@@ -97,11 +95,10 @@ const PickupCnfrm = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <MapComponent
         ref={mapRef}
-        customMapStyle={customMapStyle}
-        mapType="standard"
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+        style={{ height: mapHeight, width: '100%' }}
+        initialRegion={region}
         onRegionChangeComplete={(newRegion) => {
           setOriginCoordinates({
             latitude: newRegion?.latitude,
@@ -109,8 +106,6 @@ const PickupCnfrm = ({ route }) => {
           });
           getAddressDestination(newRegion?.latitude, newRegion?.longitude);
         }}
-        style={{ height: mapHeight, width: '100%' }}
-        initialRegion={region}
       />
       <View style={{ position: 'absolute', top: '36%', left: '45%' }}>
         <Image source={require('../../assets/images/pin.png')} style={{ height: 50, aspectRatio: 1 }} resizeMode="contain" />

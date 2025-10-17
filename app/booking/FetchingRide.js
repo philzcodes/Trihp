@@ -4,10 +4,10 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/dist/MaterialIcons';
+import { MapComponent } from '../../components';
 import PaymentModal from '../../components/Modals/PaymentTypeModal';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
@@ -97,22 +97,23 @@ const FetchingRide = (props) => {
   return (
     <View style={styles.container}>
       {/* Use React Native Maps (Expo compatible) */}
-      <MapView
+      <MapComponent
         ref={mapRef}
         style={[styles.map, { height: mapHeight }]}
-        provider={Platform.OS === 'android' ? 'google' : null}
         initialRegion={region}
         showsUserLocation={true}
         showsMyLocationButton={true}
-      >
-        <Marker coordinate={region}>
-          <Image 
-            source={require('../../assets/images/pin.png')} 
-            style={styles.markerImage} 
-            resizeMode="contain" 
-          />
-        </Marker>
-      </MapView>
+        markers={[{
+          ...region,
+          customMarker: (
+            <Image 
+              source={require('../../assets/images/pin.png')} 
+              style={styles.markerImage} 
+              resizeMode="contain" 
+            />
+          )
+        }]}
+      />
 
       {/* Rest of your BottomSheet code remains exactly the same */}
       <BottomSheet
