@@ -1,24 +1,24 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import LottieView from 'lottie-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  Image,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View
+    Image,
+    Linking,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
+import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
-import { showWarning } from '../../helper/Toaster';
+import { showSucess, showWarning } from '../../helper/Toaster';
 
-const WaitingForDriverScreen = () => {
+const DriverArrivedScreen = () => {
   const params = useLocalSearchParams();
   
   // Parse the data parameter if it's a JSON string
@@ -36,7 +36,7 @@ const WaitingForDriverScreen = () => {
     data = null;
   }
 
-  console.log('WaitingForDriverScreen - Received data:', data);
+  console.log('DriverArrivedScreen - Received data:', data);
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
@@ -44,11 +44,7 @@ const WaitingForDriverScreen = () => {
   const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
 
-  // Timer state for auto-navigation (e.g., 30 seconds before starting trip)
-  const [timeRemaining, setTimeRemaining] = useState(30);
-  const timerIntervalRef = useRef(null);
-
-  const snapPoints = useMemo(() => ['50%', '70%'], []);
+  const snapPoints = useMemo(() => ['55%', '75%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
 
   const mapHeight = height - bottomSheetHeight;
@@ -57,8 +53,6 @@ const WaitingForDriverScreen = () => {
     const snapPointValue = parseFloat(snapPoints[index]);
     setBottomSheetHeight(height * (snapPointValue / 100));
   };
-
-  console.log('WaitingForDriverScreen - Screen height:', height);
 
   // Extract driver and ride information
   const driverInfo = data?.driver || {};
@@ -99,32 +93,6 @@ const WaitingForDriverScreen = () => {
     };
   };
 
-  // Timer effect - counts down and navigates to trip started screen
-  useEffect(() => {
-    timerIntervalRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current);
-          // Navigate to trip started/in progress screen
-          router.push({
-            pathname: '/booking/DriverArrivedScreen',
-            params: {
-              data: JSON.stringify(data)
-            }
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, [router, data]);
-
   const handleMessageDriver = () => {
     showWarning('Message functionality coming soon');
   };
@@ -134,10 +102,24 @@ const WaitingForDriverScreen = () => {
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
+  const handleVerifyRide = () => {
+    showSucess('Ride verified! Starting your trip...');
+    // Navigate to trip in progress screen
+    setTimeout(() => {
+      router.push('/booking/WaitingForDriverScreen', { data: data });
+    }, 1500);
+  };
+
+  const handleCancel = () => {
+    router.push('/booking/RideCancelScreen', { 
+      data: rideInfo,
+      rideId: rideInfo?.id 
+    });
+  };
+
   // Calculate drop off time
   const getDropOffTime = () => {
     const now = new Date();
-    // Add estimated time (e.g., 15 minutes)
     const estimatedMinutes = 15;
     now.setMinutes(now.getMinutes() + estimatedMinutes);
     const hours = now.getHours();
@@ -145,32 +127,21 @@ const WaitingForDriverScreen = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  // Safety check for data - provide fallback data if missing
+  // Safety check for data
   if (!data) {
-    console.log('WaitingForDriverScreen - No data received, using fallback data');
-    // Provide fallback data to prevent infinite loading
-    data = {
-      driver: {
-        first_name: 'Micheal Edem',
-        name: 'Micheal Edem',
-        phone_number: '+1234567890',
-        profile_image: null,
-        latitude: 4.8666,
-        longitude: 6.9745,
-      },
-      ride: {
-        pickup_latitude: 4.8666,
-        pickup_longitude: 6.9745,
-        drop_latitude: 4.8670,
-        drop_longitude: 6.9750,
-        amount: '25',
-        distance: '5.2 km',
-        payment_type: 'Cash',
-      }
-    };
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingTitle}>Loading...</Text>
+          <Text style={styles.loadingMessage}>
+            Please wait while we prepare driver details.
+          </Text>
+        </View>
+      </View>
+    );
   }
 
-  const driverName = driverInfo?.first_name || driverInfo?.name || 'Micheal Edem';
+  const driverName = driverInfo?.first_name || driverInfo?.name || 'Driver Name';
 
   return (
     <View style={styles.container}>
@@ -215,12 +186,7 @@ const WaitingForDriverScreen = () => {
       {/* Back Button */}
       <Pressable 
         style={[styles.backButton, { top: Platform.OS === 'ios' ? 60 : 20 }]} 
-        onPress={() => {
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-          }
-          router.back();
-        }}
+        onPress={() => router.back()}
       >
         <View style={styles.backButtonCircle}>
           <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
@@ -242,21 +208,19 @@ const WaitingForDriverScreen = () => {
         animateOnMount={true}
       >
         <View style={styles.bottomSheetContent}>
-          {/* Header Section */}
-          <View style={styles.headerSection}>
-            <Text style={styles.headerTitle}>
-              Waiting for "{driverName}"{'\n'}to start the trip
-            </Text>
+          {/* Cancel Button */}
+          <View style={styles.cancelButtonContainer}>
+            <Pressable style={styles.cancelButton} onPress={handleCancel}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
           </View>
 
-          {/* Loading Spinner */}
-          <View style={styles.spinnerContainer}>
-            <LottieView 
-              source={require('../../assets/svgIcons/spinner.json')} 
-              autoPlay 
-              loop 
-              style={styles.spinner} 
-            />
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <Text style={styles.headerTitle}>Your driver has arrived</Text>
+            <Text style={styles.headerSubtitle}>
+              Verify Your Driver's Identity and Vehicle Description
+            </Text>
           </View>
 
           {/* Divider */}
@@ -265,23 +229,19 @@ const WaitingForDriverScreen = () => {
           {/* Driver Info Section */}
           <View style={styles.driverInfoSection}>
             <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>
-                {driverName}
-              </Text>
+              <Text style={styles.driverName}>{driverName}</Text>
               <Text style={styles.driverStatus}>Arrived</Text>
               <View style={styles.ratingContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Ionicons 
                     key={star}
                     name="star" 
-                    size={18} 
+                    size={20} 
                     color="#FFD700" 
                   />
                 ))}
               </View>
-              <Text style={styles.vehicleInfo}>
-                Brand Of Car - MM1428
-              </Text>
+              <Text style={styles.vehicleInfo}>Brand Of Car - MM1428</Text>
               <Text style={styles.dropOffTime}>
                 Drop off by {getDropOffTime()}
               </Text>
@@ -290,7 +250,7 @@ const WaitingForDriverScreen = () => {
             <View style={styles.driverImageContainer}>
               <Image
                 source={
-                  driverInfo?.profile_image 
+                  driverInfo?.profile_image
                     ? { uri: driverInfo.profile_image }
                     : require('../../assets/images/user.jpg')
                 }
@@ -329,13 +289,24 @@ const WaitingForDriverScreen = () => {
               />
             </Pressable>
           </View>
+
+          {/* Verify Button */}
+          <View style={styles.verifyButtonContainer}>
+            <TriphButton
+              text="I Have verified My Ride"
+              onPress={handleVerifyRide}
+              extraStyle={styles.verifyButton}
+              extraTextStyle={styles.verifyButtonText}
+              bgColor={{ backgroundColor: '#FFD700' }}
+            />
+          </View>
         </View>
       </BottomSheet>
     </View>
   );
 };
 
-export default WaitingForDriverScreen;
+export default DriverArrivedScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -393,30 +364,45 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
 
-  // Header Section
-  headerSection: {
+  // Cancel Button (Top Left)
+  cancelButtonContainer: {
+    paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 15,
+    alignItems: 'flex-start',
+  },
+  cancelButton: {
+    backgroundColor: Colors.whiteColor,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  cancelButtonText: {
+    ...Fonts.Regular,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+
+  // Header Section
+  headerSection: {
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   headerTitle: {
     ...Fonts.Regular,
-    fontSize: 22,
-    fontWeight: '500',
+    fontSize: 24,
+    fontWeight: '600',
     textAlign: 'center',
     color: Colors.whiteColor,
-    lineHeight: 30,
+    marginBottom: 8,
   },
-
-  // Spinner Section
-  spinnerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 25,
-  },
-  spinner: {
-    width: 80,
-    height: 80,
+  headerSubtitle: {
+    ...Fonts.Regular,
+    fontSize: 14,
+    textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 20,
   },
 
   // Divider
@@ -431,7 +417,7 @@ const styles = StyleSheet.create({
   driverInfoSection: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 25,
+    marginBottom: 20,
   },
   driverDetails: {
     flex: 1,
@@ -452,7 +438,7 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     gap: 4,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   vehicleInfo: {
     ...Fonts.Regular,
@@ -491,12 +477,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 15,
     justifyContent: 'center',
+    marginBottom: 25,
   },
   callButton: {
-    width: 120,
-    height: 55,
+    width: 100,
+    height: 50,
     backgroundColor: Colors.whiteColor,
-    borderRadius: 30,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -509,10 +496,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   messageButton: {
-    width: 120,
-    height: 55,
+    width: 100,
+    height: 50,
     backgroundColor: Colors.whiteColor,
-    borderRadius: 30,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -523,6 +510,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+
+  // Verify Button
+  verifyButtonContainer: {
+    paddingHorizontal: 20,
+  },
+  verifyButton: {
+    backgroundColor: '#FFD700',
+    borderRadius: 30,
+    paddingVertical: 16,
+  },
+  verifyButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   // Loading State

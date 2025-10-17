@@ -1,16 +1,16 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Image,
-    Linking,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
@@ -92,14 +92,22 @@ const DriverFoundScreen = () => {
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
   const router = useRouter();
+  const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
 
   // Timer state - starts at 2 minutes (120 seconds)
   const [timeRemaining, setTimeRemaining] = useState(120);
   const timerIntervalRef = useRef(null);
 
-  // Panel expandable state
-  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+  const snapPoints = useMemo(() => ['60%', '80%'], []);
+  const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
+
+  const mapHeight = height - bottomSheetHeight;
+
+  const handleBottomSheetChange = (index) => {
+    const snapPointValue = parseFloat(snapPoints[index]);
+    setBottomSheetHeight(height * (snapPointValue / 100));
+  };
 
   console.log('DriverFoundScreen - Screen height:', height);
 
@@ -172,10 +180,16 @@ const DriverFoundScreen = () => {
   // Separate effect to handle navigation when timer reaches 0
   useEffect(() => {
     if (timeRemaining === 0) {
-      console.log('Timer reached 0, navigating to DriverArrivedScreen');
+      console.log('Timer reached 0, navigating to WaitingForDriverScreen');
+      console.log('DriverFoundScreen - Data being passed:', data);
       // Use setTimeout to ensure navigation happens after render
       setTimeout(() => {
-        router.push('/booking/WaitingForDriverScreen', { data: data });
+        router.push({
+          pathname: '/booking/WaitingForDriverScreen',
+          params: {
+            data: JSON.stringify(data)
+          }
+        });
       }, 0);
     }
   }, [timeRemaining, router, data]);
@@ -218,7 +232,7 @@ const DriverFoundScreen = () => {
       {/* Map Component */}
       <MapComponent
         ref={mapRef}
-        style={styles.map}
+        style={[styles.map, { height: mapHeight }]}
         initialRegion={calculateRegion()}
         showsUserLocation={false}
         showsMyLocationButton={false}
@@ -268,18 +282,21 @@ const DriverFoundScreen = () => {
         </View>
       </Pressable>
 
-      {/* Driver Info Panel */}
-      <View style={[styles.driverPanel, { height: isPanelExpanded ? '80%' : '60%' }]}>
-        {/* Panel Header with Expand/Collapse Button */}
-        <Pressable style={styles.panelHeader} onPress={togglePanelExpansion}>
-          <View style={styles.panelHandle} />
-        </Pressable>
-
-        <ScrollView 
-          style={styles.driverPanelContent}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
+      {/* Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetModalRef}
+        index={0}
+        snapPoints={snapPoints}
+        enablePanDownToClose={false}
+        handleIndicatorStyle={styles.bottomSheetIndicator}
+        backgroundStyle={styles.bottomSheetBackground}
+        enableOverDrag={false}
+        bottomInset={insets.bottom}
+        onChange={handleBottomSheetChange}
+        enableDynamicSizing={false}
+        animateOnMount={true}
+      >
+        <View style={styles.bottomSheetContent}>
           
           {/* Header with Timer */}
           <View style={styles.headerSection}>
@@ -408,8 +425,8 @@ const DriverFoundScreen = () => {
               bgColor={{ backgroundColor: '#FFD700' }}
             />
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </BottomSheet>
     </View>
   );
 };
@@ -422,7 +439,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   map: {
-    flex: 1,
     width: '100%',
   },
   pickupMarker: {
@@ -457,46 +473,20 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Driver Panel Styles
-  driverPanel: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  // Bottom Sheet Styles
+  bottomSheetIndicator: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 40,
+    height: 4,
+  },
+  bottomSheetBackground: {
     backgroundColor: '#000000',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
-  panelHeader: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  panelHandle: {
-    width: 50,
-    height: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 3,
-    alignSelf: 'center',
-  },
-  driverPanelContent: {
+  bottomSheetContent: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
 
   // Header Section
@@ -506,6 +496,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 10,
     paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   headerTitle: {
     ...Fonts.Regular,
@@ -540,6 +531,7 @@ const styles = StyleSheet.create({
   // Trip Details Section
   tripDetailsSection: {
     paddingBottom: 15,
+    paddingHorizontal: 20,
   },
   locationRow: {
     flexDirection: 'row',
@@ -603,6 +595,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   messageButton: {
     flex: 1,
@@ -649,6 +642,7 @@ const styles = StyleSheet.create({
   driverInfoSection: {
     flexDirection: 'row',
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   driverDetails: {
     flex: 1,
@@ -699,6 +693,7 @@ const styles = StyleSheet.create({
   // Cancel Button
   cancelButtonContainer: {
     marginTop: 10,
+    paddingHorizontal: 20,
   },
   cancelButton: {
     backgroundColor: '#FFD700',

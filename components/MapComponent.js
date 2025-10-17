@@ -41,9 +41,9 @@ const MapComponent = React.forwardRef(({
   const defaultRegion = {
     latitude: 4.8666,
     longitude: 6.9745,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  };
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
 
   const mapRegion = region || defaultRegion;
 
@@ -56,8 +56,8 @@ const MapComponent = React.forwardRef(({
         if (onMapReady) {
           onMapReady();
         }
-      }
-    } catch (error) {
+        }
+      } catch (error) {
       console.error('MapComponent: Error in onMapReady:', error);
     }
   };
@@ -66,8 +66,8 @@ const MapComponent = React.forwardRef(({
     try {
       if (isMountedRef.current && onRegionChange) {
         onRegionChange(newRegion);
-      }
-    } catch (error) {
+        }
+      } catch (error) {
       console.error('MapComponent: Error in onRegionChange:', error);
     }
   };
@@ -93,23 +93,23 @@ const MapComponent = React.forwardRef(({
   };
 
   try {
-    return (
-      <View style={[styles.container, style]}>
-        <MapView
-          ref={mapReference}
-          style={styles.map}
-          mapType="standard"
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+  return (
+    <View style={[styles.container, style]}>
+      <MapView
+        ref={mapReference}
+        style={styles.map}
+        mapType="standard"
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
           region={mapRegion}
-          showsUserLocation={showsUserLocation}
-          followsUserLocation={followsUserLocation}
-          showsMyLocationButton={showsMyLocationButton}
-          zoomControlEnabled={zoomControlEnabled}
+        showsUserLocation={showsUserLocation}
+        followsUserLocation={followsUserLocation}
+        showsMyLocationButton={showsMyLocationButton}
+        zoomControlEnabled={zoomControlEnabled}
           onRegionChange={handleRegionChange}
           onRegionChangeComplete={handleRegionChangeComplete}
           onPress={handlePress}
           onMapReady={handleMapReady}
-          {...props}
+        {...props}
         />
       </View>
     );
@@ -123,8 +123,8 @@ const MapComponent = React.forwardRef(({
             Map temporarily unavailable
           </Text>
         </View>
-      </View>
-    );
+    </View>
+  );
   }
 });
 
