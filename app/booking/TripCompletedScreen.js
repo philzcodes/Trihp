@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Platform,
@@ -19,23 +19,56 @@ import { showSucess } from '../../helper/Toaster';
 
 const TripCompletedScreen = () => {
   const params = useLocalSearchParams();
-  
-  // Parse the data parameter if it's a JSON string
-  let data = null;
-  try {
-    if (params?.data) {
-      if (typeof params.data === 'string') {
-        data = JSON.parse(params.data);
-      } else {
-        data = params.data;
-      }
-    }
-  } catch (error) {
-    console.error('Error parsing data parameter:', error);
-    data = null;
-  }
+  const dataParsedRef = useRef(false);
+  const [data, setData] = useState(null);
 
-  console.log('TripCompletedScreen - Received data:', data);
+  // Parse data only once when component mounts
+  useEffect(() => {
+    if (dataParsedRef.current) return;
+    
+    let parsedData = null;
+    
+    try {
+      if (params?.data) {
+        if (typeof params.data === 'string') {
+          parsedData = JSON.parse(params.data);
+        } else {
+          parsedData = params.data;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing data parameter:', error);
+      parsedData = null;
+    }
+
+    // If no data, provide fallback data
+    if (!parsedData) {
+      console.log('TripCompletedScreen - No data received, using fallback data');
+      parsedData = {
+        driver: {
+          first_name: 'Micheal Edem',
+          name: 'Micheal Edem',
+          phone_number: '+1234567890',
+          profile_image: null,
+          latitude: 4.8666,
+          longitude: 6.9745,
+        },
+        ride: {
+          pickup_latitude: 4.8666,
+          pickup_longitude: 6.9745,
+          drop_latitude: 4.8670,
+          drop_longitude: 6.9750,
+          amount: '25',
+          distance: '5.2 km',
+          payment_type: 'Cash',
+        }
+      };
+    }
+
+    console.log('TripCompletedScreen - Received data:', parsedData);
+    setData(parsedData);
+    dataParsedRef.current = true;
+  }, []); // Empty dependency array - only run once
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
@@ -116,28 +149,18 @@ const TripCompletedScreen = () => {
     }, 1500);
   };
 
-  // Safety check for data - provide fallback data if missing
+  // Show loading screen while data is being parsed
   if (!data) {
-    console.log('TripCompletedScreen - No data received, using fallback data');
-    data = {
-      driver: {
-        first_name: 'Micheal Edem',
-        name: 'Micheal Edem',
-        phone_number: '+1234567890',
-        profile_image: null,
-        latitude: 4.8666,
-        longitude: 6.9745,
-      },
-      ride: {
-        pickup_latitude: 4.8666,
-        pickup_longitude: 6.9745,
-        drop_latitude: 4.8670,
-        drop_longitude: 6.9750,
-        amount: '25',
-        distance: '5.2 km',
-        payment_type: 'Cash',
-      }
-    };
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingTitle}>Loading...</Text>
+          <Text style={styles.loadingMessage}>
+            Please wait while we prepare trip summary.
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   const driverName = driverInfo?.first_name || driverInfo?.name || 'Driver Name';
