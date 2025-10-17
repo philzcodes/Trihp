@@ -105,7 +105,10 @@ const TripInProgressScreen = () => {
         if (prev <= 1) {
           clearInterval(timerIntervalRef.current);
           // Navigate to trip completed screen
-          router.push('/booking/TripCompletedScreen', { data: data });
+          router.push({
+            pathname: '/booking/TripCompletedScreen',
+            params: { data: JSON.stringify(data) }
+          });
           return 0;
         }
         return prev - 1;
