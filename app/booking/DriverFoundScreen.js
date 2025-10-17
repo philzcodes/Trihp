@@ -1,7 +1,5 @@
 import BottomSheet from '@gorhom/bottom-sheet';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,13 +9,13 @@ import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
 import { calculateDropOffTime } from '../../helper/calculateDropOffTime';
-import Constant from '../../helper/Constant';
 import { showError, showSucess, showWarning } from '../../helper/Toaster';
 import useBookingStore from '../../store/bookingStore';
 import useUserStore from '../../store/userStore';
 
-const DriverFoundScreen = ({ route }) => {
-  const data = route?.params?.data;
+const DriverFoundScreen = () => {
+  const params = useLocalSearchParams();
+  const data = params?.data;
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
   const router = useRouter();
@@ -62,32 +60,36 @@ const DriverFoundScreen = ({ route }) => {
   // Initialize Zustand store with route data
   useEffect(() => {
     if (data) {
-      setDriverInfo(data?.driver);
-      setCurrentRide(data?.data || data?.ride);
-      setDriverCoordinates({
-        latitude: parseFloat(data?.driver?.latitude),
-        longitude: parseFloat(data?.driver?.longitude),
-      });
+      try {
+        setDriverInfo(data?.driver);
+        setCurrentRide(data?.data || data?.ride);
+        if (data?.driver?.latitude && data?.driver?.longitude) {
+          setDriverCoordinates({
+            latitude: parseFloat(data.driver.latitude),
+            longitude: parseFloat(data.driver.longitude),
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing driver data:', error);
+      }
     }
   }, [data, setDriverInfo, setCurrentRide, setDriverCoordinates]);
   const pickupCoordinates = currentRide ? {
-    latitude: parseFloat(currentRide.pickup_latitude || currentRide.data?.pickup_latitude),
-    longitude: parseFloat(currentRide.pickup_longitude || currentRide.data?.pickup_longitude),
+    latitude: parseFloat(currentRide.pickup_latitude || currentRide.data?.pickup_latitude) || 4.8666,
+    longitude: parseFloat(currentRide.pickup_longitude || currentRide.data?.pickup_longitude) || 6.9745,
   } : null;
   
   const dropUpCoordinates = currentRide ? {
-    latitude: parseFloat(currentRide.drop_latitude || currentRide.data?.drop_latitude),
-    longitude: parseFloat(currentRide.drop_longitude || currentRide.data?.drop_longitude),
+    latitude: parseFloat(currentRide.drop_latitude || currentRide.data?.drop_latitude) || 4.8666,
+    longitude: parseFloat(currentRide.drop_longitude || currentRide.data?.drop_longitude) || 6.9745,
   } : null;
 
   const isFetching = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
-      fetchUser();
-    });
-    return unsubscribe;
-  }, [router, fetchUser]);
+    // Fetch user data when component mounts
+    fetchUser();
+  }, [fetchUser]);
 
   const calculateRegion = useCallback(() => {
     if (!driverCoordinates) return null;
@@ -112,10 +114,14 @@ const DriverFoundScreen = ({ route }) => {
   }, [driverCoordinates, pickupCoordinates, dropUpCoordinates, rideStartStatus]);
 
   useEffect(() => {
-    if (driverCoordinates) {
-      const region = calculateRegion();
-      if (region) {
-        mapRef.current.animateToRegion(region, 1500);
+    if (driverCoordinates && mapRef.current) {
+      try {
+        const region = calculateRegion();
+        if (region) {
+          mapRef.current.animateToRegion(region, 1500);
+        }
+      } catch (error) {
+        console.error('Error animating to region:', error);
       }
     }
   }, [driverCoordinates, pickupCoordinates, dropUpCoordinates, rideStartStatus]);
@@ -134,74 +140,70 @@ const DriverFoundScreen = ({ route }) => {
     if (isFetching.current) return;
     isFetching.current = true;
     try {
-      const data = await AsyncStorage.getItem('userDetail');
-      const parsedData = JSON.parse(data);
-      const token = parsedData?.token;
-      const Url = `${Constant.baseUrl}driver-detail`;
-      const prm = {
-        id: rideID,
-      };
-      const res = await axios.post(Url, prm, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Dummy ride details - no real API call
+      const dummyRideData = {
+        status: 200,
+        data: {
+          id: rideID,
+          start_trihp_status: 0, // 0 = pickup, 1 = started, 2 = completed
+          reached_driver_status: 1,
+          status: 1, // 1 = active, 3 = cancelled
+          pickup_latitude: currentRide?.pickup_latitude || 4.8666,
+          pickup_longitude: currentRide?.pickup_longitude || 6.9745,
+          drop_latitude: currentRide?.drop_latitude || 4.8666,
+          drop_longitude: currentRide?.drop_longitude || 6.9745,
         },
+        driver: {
+          id: driverInfo?.id || 'dummy_driver_123',
+          first_name: driverInfo?.first_name || 'John',
+          phone_number: driverInfo?.phone_number || '+1234567890',
+          latitude: (driverCoordinates?.latitude || 4.8666) + (Math.random() - 0.5) * 0.001,
+          longitude: (driverCoordinates?.longitude || 6.9745) + (Math.random() - 0.5) * 0.001,
+          vehicle_category_id: driverInfo?.vehicle_category_id || 1,
+          rating: 4.8,
+        }
+      };
+      
+      console.log('Dummy ride details:', dummyRideData);
+      
+      setCurrentRide(dummyRideData.data);
+      if (dummyRideData.data.start_trihp_status !== 0) {
+        setRideStartStatus(true);
+      }
+      
+      const driver = dummyRideData.driver;
+      setDriverInfo(driver);
+      setDriverCoordinates({
+        latitude: parseFloat(driver.latitude),
+        longitude: parseFloat(driver.longitude),
       });
-      if (res?.data?.status === 200 && res?.data?.driver) {
-        setCurrentRide(res?.data?.data);
-        if (res?.data?.data?.start_trihp_status !== 0) {
-          setRideStartStatus(true);
-        }
-        const driver = res?.data?.driver;
-        setDriverInfo(driver);
-        setDriverCoordinates({
-          latitude: parseFloat(driver.latitude),
-          longitude: parseFloat(driver.longitude),
-        });
 
-        if (res?.data?.data?.start_trihp_status == 2) {
-          clearInterval(intervalIdRef.current);
-          router.push('/(tabs)/Dashboard', { rideId: rideID });
-        }
-
-        if (res?.data?.data?.status === 3) {
-          showError('Ride is canceled by the driver');
-          clearInterval(intervalIdRef.current);
-          router.push('/(tabs)/Dashboard');
-        }
+      // Simulate ride completion after some time
+      if (Math.random() < 0.1) { // 10% chance to complete ride
+        clearInterval(intervalIdRef.current);
+        router.push('/(tabs)/Dashboard', { rideId: rideID });
       }
-      console.log('Ride Details:', res?.data);
+
+      // Simulate ride cancellation (very low chance)
+      if (Math.random() < 0.05) { // 5% chance to cancel
+        showError('Ride is canceled by the driver');
+        clearInterval(intervalIdRef.current);
+        router.push('/(tabs)/Dashboard');
+      }
+      
     } catch (error) {
-      console.log('An error occurred while fetching driver details:', error);
-      if (error.response) {
-        console.log('Server Error:', error.response.data);
-      } else if (error.request) {
-        console.log('Network Error:', error.request);
-      } else {
-        console.log('Error:', error.message);
-      }
+      console.log('Error in dummy ride details:', error);
     } finally {
       isFetching.current = false;
     }
-  }, [rideID, router]);
+  }, [rideID, router, currentRide, driverInfo, driverCoordinates]);
 
   const renderDriverMarker = () => {
-    let vehicleImage = require('../../assets/images/TopLuxe.png');
-    if (driverInfo?.vehicle_category_id === 1) {
-      vehicleImage = require('../../assets/images/TopCar.png');
-    } else if (driverInfo?.vehicle_category_id === 2) {
-      vehicleImage = require('../../assets/images/TopBike.png');
-    } else if (driverInfo?.vehicle_category_id === 3) {
-      vehicleImage = require('../../assets/images/TopAuto.png');
-    } else if (driverInfo?.vehicle_category_id === 4) {
-      vehicleImage = require('../../assets/images/TopLite.png');
-    } else if (driverInfo?.vehicle_category_id === 5) {
-      vehicleImage = require('../../assets/images/TopSuv.png');
-    }
-    return (
-      <Marker coordinate={driverCoordinates} tracksViewChanges={false}>
-        <Image source={vehicleImage} style={{ width: 60, height: 60 }} resizeMode="contain" />
-      </Marker>
-    );
+    // Simplified marker rendering - return null to avoid Marker component issues
+    return null;
   };
 
   const handleChat = async () => {
@@ -217,28 +219,22 @@ const DriverFoundScreen = ({ route }) => {
 
   const startTriph = async () => {
     try {
-      const data = await AsyncStorage.getItem('userDetail');
-      const token = JSON.parse(data)?.token;
-      if (!token) {
-        return null;
-      }
-      const info = {
-        id: rideID,
-      };
-      const url = Constant.baseUrl + 'start-trihp';
-      const res = await axios.post(url, info, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Dummy start trip - no real API call
+      console.log('Dummy start trip:', {
+        rideId: rideID,
+        timestamp: new Date().toISOString()
       });
-
-      if (res?.data?.status === 200) {
-        bottomSheetModalRef.current?.snapToIndex(0);
-        showSucess(res?.data?.message);
-        setRideStartStatus(true);
-      }
+      
+      // Simulate successful trip start
+      bottomSheetModalRef.current?.snapToIndex(0);
+      showSucess('Trip started successfully!');
+      setRideStartStatus(true);
+      
     } catch (error) {
-      console.log('Error updating driver status:', error);
+      console.log('Error in dummy start trip:', error);
     }
   };
 
@@ -262,25 +258,29 @@ const DriverFoundScreen = ({ route }) => {
             <Image source={require('../../assets/images/originLocation.png')} style={{ width: 22, height: 30 }} resizeMode="contain" />
           )
         }}
-        driverMarkers={[{
+        driverMarkers={driverCoordinates ? [{
           ...driverCoordinates,
           customMarker: renderDriverMarker()
-        }]}
+        }] : []}
         showDirections={true}
         originCoordinates={driverCoordinates}
         destinationCoordinates={currentRide?.start_trihp_status == 0 ? pickupCoordinates : dropUpCoordinates}
         directionsStrokeWidth={6}
         directionsStrokeColor="#000"
         onDirectionsReady={(result) => {
-          if (currentRide?.start_trihp_status == 0) {
-            const duration = result.legs[0].duration.text;
-            setPickupTime(duration);
-          } else {
-            const duration = result.legs[0].duration.text;
-            const durationParts = duration.split(' ');
-            const durationMins = parseInt(durationParts[0]);
-            setDurationMinutes(durationMins);
-            setDropOffTime(calculateDropOffTime(durationMins));
+          try {
+            if (currentRide?.start_trihp_status == 0) {
+              const duration = result.legs[0].duration.text;
+              setPickupTime(duration);
+            } else {
+              const duration = result.legs[0].duration.text;
+              const durationParts = duration.split(' ');
+              const durationMins = parseInt(durationParts[0]);
+              setDurationMinutes(durationMins);
+              setDropOffTime(calculateDropOffTime(durationMins));
+            }
+          } catch (error) {
+            console.error('Error processing directions:', error);
           }
         }}
       />

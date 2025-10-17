@@ -1,18 +1,16 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon3 from 'react-native-vector-icons/MaterialCommunityIcons';
 import BackHeader from '../../components/BackHeader';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts, STATUS_BAR_HEIGHT } from '../../constants';
-import Constant from '../../helper/Constant';
 import { showError } from '../../helper/Toaster';
 
-const RideCancelScreen = (props) => {
+const RideCancelScreen = () => {
   const router = useRouter();
-  const { rideId, setIsFetching } = props.route?.params || {};
+  const params = useLocalSearchParams();
+  const { rideId, setIsFetching } = params || {};
 
   const [loading, setLoading] = useState(false);
   const reasons = [
@@ -29,21 +27,27 @@ const RideCancelScreen = (props) => {
 
   const cancelRide = useCallback(async () => {
     try {
-      const userDetail = await AsyncStorage.getItem('userDetail');
-      const { token } = JSON.parse(userDetail);
-      const Url = `${Constant.baseUrl}ride/${rideId}/cancel`;
-      const res = await axios.post(Url, { rideCancelReason }, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data?.status === 200) {
-        setIsFetching(false);
-        showError('Ride has been canceled');
-        router.push('/(tabs)/Dashboard', { radius: 10 });
-      }
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Dummy ride cancellation - no real API call
+      console.log('Dummy ride cancellation:', {
+        rideId,
+        reason: rideCancelReason?.name,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Simulate successful cancellation
+      setIsFetching(false);
+      showError('Ride has been canceled');
+      router.push('/(tabs)/Dashboard', { radius: 10 });
+      
     } catch (error) {
       setLoading(false);
       showError('Error canceling ride');
-      console.error('Error canceling ride:', error);
+      console.error('Error in dummy ride cancellation:', error);
     }
-  }, [rideId, router]);
+  }, [rideId, router, rideCancelReason, setIsFetching]);
 
   const handleCancelRide = () => {
     setLoading(true);

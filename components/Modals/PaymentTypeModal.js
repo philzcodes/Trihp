@@ -1,20 +1,42 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Fonts } from '../../constants';
 
-const PaymentTypeModal = ({ isVisible, onClose }) => {
+const PaymentTypeModal = ({ 
+  visible, 
+  setVisible, 
+  amount, 
+  isWallet, 
+  selectedPaymentMethod, 
+  setSelectedPaymentMethod,
+  isVisible: isVisibleProp, 
+  onClose 
+}) => {
+  // Handle both prop naming conventions
+  const isModalVisible = visible || isVisibleProp;
+  const closeModal = () => {
+    if (setVisible) {
+      setVisible(false);
+    } else if (onClose) {
+      onClose();
+    }
+  };
+
   return (
     <Modal
-      visible={isVisible}
+      visible={isModalVisible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={closeModal}
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <Text style={styles.title}>Payment Type</Text>
           <Text style={styles.description}>Payment type selection coming soon...</Text>
-          <TouchableOpacity style={styles.button} onPress={onClose}>
+          {amount && (
+            <Text style={styles.amountText}>Amount: ${amount}</Text>
+          )}
+          <TouchableOpacity style={styles.button} onPress={closeModal}>
             <Text style={styles.buttonText}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -49,6 +71,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 20,
+  },
+  amountText: {
+    ...Fonts.Medium,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    color: Colors.yellow,
   },
   button: {
     backgroundColor: Colors.yellow,
