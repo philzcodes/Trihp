@@ -23,7 +23,7 @@ const AddPayMethods = () => {
       isLogo: true,
       logo: AFRIMONEY_LOGO,
       backgroundColor: '#000000',
-      onPress: () => navigation.push('/Payments/AddAfrimoneyWallet'),
+      onPress: () => router.push('/Payments/AddAfrimoneyWallet'),
     },
     {
       id: 2,
@@ -31,7 +31,7 @@ const AddPayMethods = () => {
       subtext: 'Top tup to your Trihp wallet',
       icon: 'wallet-outline',
       backgroundColor: '#000000',
-      onPress: () => navigation.navigate('AddMoney'),
+      onPress: () => router.push('/Payments/AddMoney'),
     },
   ];
 

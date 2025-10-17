@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     backgroundColor: Colors.yellow || '#FFD700',
-    borderRadius: 25,
+    borderRadius: 50,
     height: 55,
   },
 });

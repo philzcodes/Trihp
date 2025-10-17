@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Image,
@@ -18,6 +18,7 @@ const AFRIMONEY_LOGO = require('../../assets/images/paymentMode/afrimoney.png');
 
 const ManageMobileMoney = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
 
   // Get wallet details from params
   const {
@@ -26,18 +27,21 @@ const ManageMobileMoney = () => {
     accountNumber = '****2344',
     walletLogo = AFRIMONEY_LOGO,
     backgroundColor = '#95246D',
-  } = route.params || {};
+  } = params || {};
 
   const [isRemoveModalVisible, setRemoveModalVisible] = useState(false);
 
   const handleEdit = () => {
     // Navigate to edit wallet screen
-    navigation.navigate('EditWallet', {
-      walletName,
-      walletNickname,
-      accountNumber,
-      walletLogo,
-      backgroundColor,
+    router.push({
+      pathname: '/Payments/EditWallet',
+      params: {
+        walletName,
+        walletNickname,
+        accountNumber,
+        walletLogo: JSON.stringify(walletLogo),
+        backgroundColor,
+      }
     });
   };
 

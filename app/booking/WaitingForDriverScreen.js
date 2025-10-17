@@ -1,17 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Image,
-    Linking,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
@@ -41,22 +41,16 @@ const WaitingForDriverScreen = () => {
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
   const router = useRouter();
-  const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
 
   // Timer state for auto-navigation (e.g., 30 seconds before starting trip)
   const [timeRemaining, setTimeRemaining] = useState(30);
   const timerIntervalRef = useRef(null);
 
-  const snapPoints = useMemo(() => ['50%', '70%'], []);
-  const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
+  // Panel expandable state
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
 
-  const mapHeight = height - bottomSheetHeight;
-
-  const handleBottomSheetChange = (index) => {
-    const snapPointValue = parseFloat(snapPoints[index]);
-    setBottomSheetHeight(height * (snapPointValue / 100));
-  };
+  console.log('WaitingForDriverScreen - Screen height:', height);
 
   // Extract driver and ride information
   const driverInfo = data?.driver || {};
@@ -127,6 +121,10 @@ const WaitingForDriverScreen = () => {
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
+  const togglePanelExpansion = () => {
+    setIsPanelExpanded(!isPanelExpanded);
+  };
+
   // Calculate drop off time
   const getDropOffTime = () => {
     const now = new Date();
@@ -159,7 +157,7 @@ const WaitingForDriverScreen = () => {
       {/* Map Component */}
       <MapComponent
         ref={mapRef}
-        style={[styles.map, { height: mapHeight }]}
+        style={styles.map}
         initialRegion={calculateRegion()}
         showsUserLocation={false}
         showsMyLocationButton={false}
@@ -209,21 +207,18 @@ const WaitingForDriverScreen = () => {
         </View>
       </Pressable>
 
-      {/* Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetModalRef}
-        index={0}
-        snapPoints={snapPoints}
-        enablePanDownToClose={false}
-        handleIndicatorStyle={styles.bottomSheetIndicator}
-        backgroundStyle={styles.bottomSheetBackground}
-        enableOverDrag={false}
-        bottomInset={insets.bottom}
-        onChange={handleBottomSheetChange}
-        enableDynamicSizing={false}
-        animateOnMount={true}
-      >
-        <View style={styles.bottomSheetContent}>
+      {/* Driver Info Panel */}
+      <View style={[styles.driverPanel, { height: isPanelExpanded ? '80%' : '60%' }]}>
+        {/* Panel Header with Expand/Collapse Button */}
+        <Pressable style={styles.panelHeader} onPress={togglePanelExpansion}>
+          <View style={styles.panelHandle} />
+        </Pressable>
+
+        <ScrollView 
+          style={styles.driverPanelContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Header Section */}
           <View style={styles.headerSection}>
             <Text style={styles.headerTitle}>
@@ -311,8 +306,8 @@ const WaitingForDriverScreen = () => {
               />
             </Pressable>
           </View>
-        </View>
-      </BottomSheet>
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -325,6 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   map: {
+    flex: 1,
     width: '100%',
   },
   destinationMarker: {
@@ -359,27 +355,52 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Bottom Sheet Styles
-  bottomSheetIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    width: 40,
-    height: 4,
-  },
-  bottomSheetBackground: {
+  // Driver Panel Styles
+  driverPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#000000',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-  },
-  bottomSheetContent: {
-    flex: 1,
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  panelHeader: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  panelHandle: {
+    width: 50,
+    height: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 3,
+    alignSelf: 'center',
+  },
+  driverPanelContent: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
 
   // Header Section
   headerSection: {
     paddingTop: 10,
     paddingBottom: 15,
-    paddingHorizontal: 20,
   },
   headerTitle: {
     ...Fonts.Regular,
@@ -412,7 +433,6 @@ const styles = StyleSheet.create({
   // Driver Info Section
   driverInfoSection: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
     marginBottom: 25,
   },
   driverDetails: {
@@ -470,7 +490,6 @@ const styles = StyleSheet.create({
   // Action Buttons Section
   actionButtonsSection: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
     gap: 15,
     justifyContent: 'center',
   },
