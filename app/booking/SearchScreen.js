@@ -314,15 +314,15 @@ const SearchScreen = ({ route }) => {
           <View style={styles.inputSection}>
             {/* Origin Input */}
             <View style={styles.inputWrapper}>
-              <TextInput
-                value={originLocation}
-                placeholder="Current Location"
-                onChangeText={(text) => {
-                  setOriginLocation(text);
-                  handleOriginSearch(text);
+                <TextInput
+                  value={originLocation}
+                  placeholder="Current Location"
+                  onChangeText={(text) => {
+                    setOriginLocation(text);
+                    handleOriginSearch(text);
                 }}
                 onFocus={() => {
-                  setFocusedInput('origin');
+                    setFocusedInput('origin');
                   setOriginShowList(true);
                 }}
                 onBlur={() => {
@@ -336,108 +336,108 @@ const SearchScreen = ({ route }) => {
                 placeholderTextColor="#6B6B6B"
                 style={styles.textInput}
               />
-            </View>
+              </View>
 
             {/* Destination Input */}
             <View style={styles.inputWrapper}>
-              <TextInput
-                value={destinationLocation}
-                placeholder="Where to?"
-                onChangeText={(text) => {
-                  setDestinationLocation(text);
-                  handleDestinationSearch(text);
-                }}
-                onFocus={() => {
+                <TextInput
+                  value={destinationLocation}
+                  placeholder="Where to?"
+                  onChangeText={(text) => {
+                    setDestinationLocation(text);
+                    handleDestinationSearch(text);
+                  }}
+                  onFocus={() => {
                   setFocusedInput('destination');
-                  setDropShowList(true);
-                }}
-                onBlur={() => {
+                    setDropShowList(true);
+                  }}
+                  onBlur={() => {
                   setTimeout(() => {
                     if (dropPrediction.length === 0) {
                       setDropShowList(false);
                     }
                   }, 200);
-                }}
+                  }}
                 selectionColor="#FFFFFF"
                 placeholderTextColor="#6B6B6B"
-                style={styles.textInput}
+                  style={styles.textInput}
+                />
+          </View>
+
+          {/* Predictions Lists */}
+          {focusedInput === 'origin' && originPrediction.length > 0 && originShowList && (
+              <View style={styles.predictionsContainer}>
+              <FlatList
+                data={originPrediction}
+                keyboardShouldPersistTaps="always"
+                  keyExtractor={(item, index) => item?.place_id || index.toString()}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.predictionItem}
+                    onPress={() => {
+                        setOriginLocation(item?.structured_formatting?.main_text || item?.description);
+                      setOriginShowList(false);
+                      checkLocation(item?.description, true);
+                        Keyboard.dismiss();
+                    }}
+                  >
+                      <View style={styles.predictionIconContainer}>
+                        <Icon name="location-sharp" size={18} color="#FFFFFF" />
+                      </View>
+                    <View style={styles.predictionTextContainer}>
+                        <Text style={styles.predictionMainText}>
+                          {item?.structured_formatting?.main_text || 'No address found'}
+                        </Text>
+                      {item?.structured_formatting?.secondary_text && (
+                        <Text style={styles.predictionSecondaryText} numberOfLines={1}>
+                          {item?.structured_formatting?.secondary_text}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                )}
               />
             </View>
+          )}
 
-            {/* Predictions Lists */}
-            {focusedInput === 'origin' && originPrediction.length > 0 && originShowList && (
+          {focusedInput === 'destination' && dropPrediction.length > 0 && dropShowList && (
               <View style={styles.predictionsContainer}>
-                <FlatList
-                  data={originPrediction}
-                  keyboardShouldPersistTaps="always"
+              <FlatList
+                data={dropPrediction}
+                keyboardShouldPersistTaps="always"
                   keyExtractor={(item, index) => item?.place_id || index.toString()}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      style={styles.predictionItem}
-                      onPress={() => {
-                        setOriginLocation(item?.structured_formatting?.main_text || item?.description);
-                        setOriginShowList(false);
-                        checkLocation(item?.description, true);
-                        Keyboard.dismiss();
-                      }}
-                    >
-                      <View style={styles.predictionIconContainer}>
-                        <Icon name="location-sharp" size={18} color="#FFFFFF" />
-                      </View>
-                      <View style={styles.predictionTextContainer}>
-                        <Text style={styles.predictionMainText}>
-                          {item?.structured_formatting?.main_text || 'No address found'}
-                        </Text>
-                        {item?.structured_formatting?.secondary_text && (
-                          <Text style={styles.predictionSecondaryText} numberOfLines={1}>
-                            {item?.structured_formatting?.secondary_text}
-                          </Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  )}
-                />
-              </View>
-            )}
-
-            {focusedInput === 'destination' && dropPrediction.length > 0 && dropShowList && (
-              <View style={styles.predictionsContainer}>
-                <FlatList
-                  data={dropPrediction}
-                  keyboardShouldPersistTaps="always"
-                  keyExtractor={(item, index) => item?.place_id || index.toString()}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      style={styles.predictionItem}
-                      onPress={() => {
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.predictionItem}
+                    onPress={() => {
                         setDestinationLocation(item?.structured_formatting?.main_text || item?.description);
-                        setDropShowList(false);
-                        checkLocation(item?.description, false);
+                      setDropShowList(false);
+                      checkLocation(item?.description, false);
                         Keyboard.dismiss();
-                      }}
-                    >
+                    }}
+                  >
                       <View style={styles.predictionIconContainer}>
                         <Icon name="location-sharp" size={18} color="#FFFFFF" />
                       </View>
-                      <View style={styles.predictionTextContainer}>
+                    <View style={styles.predictionTextContainer}>
                         <Text style={styles.predictionMainText}>
                           {item?.structured_formatting?.main_text || 'No address found'}
                         </Text>
-                        {item?.structured_formatting?.secondary_text && (
-                          <Text style={styles.predictionSecondaryText} numberOfLines={1}>
-                            {item?.structured_formatting?.secondary_text}
-                          </Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  )}
-                />
-              </View>
-            )}
+                      {item?.structured_formatting?.secondary_text && (
+                        <Text style={styles.predictionSecondaryText} numberOfLines={1}>
+                          {item?.structured_formatting?.secondary_text}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                )}
+              />
+            </View>
+          )}
 
-            {/* Recent Locations */}
-            {showRecentLocations && (
-              <View style={styles.recentLocationsContainer}>
+          {/* Recent Locations */}
+          {showRecentLocations && (
+            <View style={styles.recentLocationsContainer}>
                 {recentLocations.map((item, index) => (
                   <View key={item.id}>
                     <TouchableOpacity 
@@ -445,45 +445,45 @@ const SearchScreen = ({ route }) => {
                       onPress={() => handleRecentLocationPress(item)}
                       activeOpacity={0.7}
                     >
-                      <View style={styles.clockIconContainer}>
+                  <View style={styles.clockIconContainer}>
                         <MaterialCommunityIcons name="clock-outline" size={22} color="#FFFFFF" />
-                      </View>
+                  </View>
                       <View style={styles.locationDetailsContainer}>
                         <Text style={styles.locationName}>{item.name}</Text>
                         <Text style={styles.locationAddress} numberOfLines={1}>
                           {item.address}
                         </Text>
-                      </View>
-                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
                     {index < recentLocations.length - 1 && <View style={styles.divider} />}
                   </View>
-                ))}
-              </View>
-            )}
-          </View>
+              ))}
+            </View>
+          )}
+        </View>
 
           {/* Map Section */}
-          {originCoordinates && (
+        {originCoordinates && (
             <View style={styles.mapSection}>
               <View style={styles.mapContainer}>
-                <MapComponent
-                  ref={mapViewRef}
-                  style={styles.map}
-                  region={originCoordinates}
-                  showsUserLocation={true}
-                  followsUserLocation={true}
-                  showsMyLocationButton={false}
-                  zoomControlEnabled={true}
-                  onRegionChangeComplete={handleRegionChange}
-                />
+            <MapComponent
+              ref={mapViewRef}
+              style={styles.map}
+              region={originCoordinates}
+              showsUserLocation={true}
+              followsUserLocation={true}
+              showsMyLocationButton={false}
+              zoomControlEnabled={true}
+              onRegionChangeComplete={handleRegionChange}
+            />
                 {/* Center Pin */}
                 <View style={styles.centerPinContainer}>
                   <View style={styles.pinCircle} />
                   <View style={styles.pinStick} />
                 </View>
-              </View>
             </View>
-          )}
+          </View>
+        )}
         </View>
 
         <Loader modalVisible={loading} setModalVisible={setLoading} />

@@ -79,7 +79,7 @@ const RideSelection = () => {
     { latitude: 8.4896, longitude: -13.2279, id: 4, vehicle_category_id: 1 },
     { latitude: 8.4856, longitude: -13.2319, id: 5, vehicle_category_id: 2 },
   ];
-
+  
   // Payment methods
   const paymentMethods = [
     { id: '1', icon: '💵', name: 'Cash', color: '#4CAF50' },
@@ -225,9 +225,9 @@ const RideSelection = () => {
         destinationLocation: params?.destinationLocation,
         originLocation: params?.originLocation,
         paymentMethod: selectedPayment?.name,
-        ride_category: selectedVehicle?.name,
-        vehicle_category_id: selectedVehicle?.id,
-        amount: selectedVehicle?.price,
+      ride_category: selectedVehicle?.name,
+      vehicle_category_id: selectedVehicle?.id,
+      amount: selectedVehicle?.price,
         distance: distance,
         stops: JSON.stringify(stops),
       }
@@ -251,14 +251,14 @@ const RideSelection = () => {
       />
       <View style={styles.vehicleDetails}>
         <View style={styles.vehicleHeader}>
-          <Text style={styles.vehicleName}>{item.name}</Text>
+        <Text style={styles.vehicleName}>{item.name}</Text>
           <Icon name="person" size={14} color="#FFFFFF" style={styles.personIcon} />
           <Text style={styles.vehicleSeats}>- {item.seats}</Text>
         </View>
-        <Text style={styles.vehicleTime}>
+          <Text style={styles.vehicleTime}>
           {arrivalTime} - {duration} away
-        </Text>
-      </View>
+          </Text>
+        </View>
       <Text style={styles.vehiclePrice}>${item.price}</Text>
     </TouchableOpacity>
   );
@@ -290,9 +290,9 @@ const RideSelection = () => {
       
       {/* Map View */}
       <View style={styles.mapContainer}>
-        <MapComponent
-          ref={mapRef}
-          style={styles.map}
+      <MapComponent
+        ref={mapRef}
+        style={styles.map}
           region={originCoordinates || {
             latitude: 4.8666,
             longitude: 6.9745,
@@ -339,17 +339,17 @@ const RideSelection = () => {
           contentContainerStyle={styles.scrollContentContainer}
         >
           {/* Loading State */}
-          {loading ? (
+        {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#FFD700" />
               <Text style={styles.loadingText}>Finding available rides...</Text>
-            </View>
-          ) : (
+          </View>
+        ) : (
             <>
               {/* Main Vehicles */}
               <View style={styles.vehiclesSection}>
                 {vehicles.map((item) => renderVehicleItem(item, selectedVehicle?.id === item.id))}
-              </View>
+      </View>
 
               {/* More Available Rides Section */}
               <View style={styles.moreRidesSection}>
@@ -385,16 +385,16 @@ const RideSelection = () => {
                 styles.confirmButton,
                 !selectedVehicle && styles.confirmButtonDisabled
               ]}
-              onPress={handleConfirmRide}
-              disabled={!selectedVehicle}
+          onPress={handleConfirmRide}
+          disabled={!selectedVehicle}
               activeOpacity={0.8}
             >
               <Text style={styles.confirmButtonText}>
                 Choose {selectedVehicle?.name || 'Ride'}
               </Text>
             </TouchableOpacity>
-          </View>
-        )}
+        </View>
+      )}
       </View>
     </View>
   );

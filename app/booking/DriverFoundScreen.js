@@ -1,438 +1,415 @@
-import BottomSheet from '@gorhom/bottom-sheet';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Image,
+    Linking,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Entypo';
-import Icon2 from 'react-native-vector-icons/Ionicons';
 import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
-import { calculateDropOffTime } from '../../helper/calculateDropOffTime';
-import { showError, showSucess, showWarning } from '../../helper/Toaster';
-import useBookingStore from '../../store/bookingStore';
-import useUserStore from '../../store/userStore';
+import { showWarning } from '../../helper/Toaster';
 
 const DriverFoundScreen = () => {
   const params = useLocalSearchParams();
-  const data = params?.data;
+  
+  // Debug logging for params
+  console.log('DriverFoundScreen - Raw params:', params);
+  console.log('DriverFoundScreen - Params keys:', Object.keys(params || {}));
+  
+  // Parse the data parameter if it's a JSON string
+  let data = null;
+  try {
+    if (params?.data) {
+      console.log('DriverFoundScreen - Raw data param:', params.data);
+      console.log('DriverFoundScreen - Data param type:', typeof params.data);
+      
+      if (typeof params.data === 'string') {
+        data = JSON.parse(params.data);
+        console.log('DriverFoundScreen - Parsed data from string:', data);
+      } else {
+        data = params.data;
+        console.log('DriverFoundScreen - Using data as object:', data);
+      }
+    } else {
+      console.log('DriverFoundScreen - No data param found, creating dummy data');
+      // Create dummy data if no data is provided
+      data = {
+        driver: {
+          first_name: 'John',
+          name: 'John Doe',
+          phone_number: '+1234567890',
+          latitude: '4.8646',
+          longitude: '6.9725',
+          profile_image: null
+        },
+        ride: {
+          id: 'ride_123',
+          pickup_latitude: '4.8666',
+          pickup_longitude: '6.9745',
+          drop_latitude: '4.8670',
+          drop_longitude: '6.9750',
+          amount: '25',
+          payment_type: 'cash'
+        }
+      };
+    }
+  } catch (error) {
+    console.error('Error parsing data parameter:', error);
+    console.log('DriverFoundScreen - Creating fallback dummy data due to parse error');
+    // Create fallback dummy data
+    data = {
+      driver: {
+        first_name: 'John',
+        name: 'John Doe',
+        phone_number: '+1234567890',
+        latitude: '4.8646',
+        longitude: '6.9725',
+        profile_image: null
+      },
+      ride: {
+        id: 'ride_123',
+        pickup_latitude: '4.8666',
+        pickup_longitude: '6.9745',
+        drop_latitude: '4.8670',
+        drop_longitude: '6.9750',
+        amount: '25',
+        payment_type: 'cash'
+      }
+    };
+  }
+  
+  console.log('DriverFoundScreen - Final data:', data);
+
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
   const router = useRouter();
-  const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
-  const rideID = data?.data?.id || data?.ride?.id;
-  
-  // Zustand stores
-  const { userData, fetchUser } = useUserStore();
-  const { 
-    driverInfo, 
-    setDriverInfo, 
-    currentRide, 
-    setCurrentRide,
-    rideStartStatus,
-    setRideStartStatus,
-    durationMinutes,
-    setDurationMinutes,
-    dropOffTime,
-    setDropOffTime,
-    pickupTime,
-    setPickupTime,
-    driverCoordinates,
-    setDriverCoordinates
-  } = useBookingStore();
-  
-  const [ratingModal, setRatingModal] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [ratingMessage, setRatingMessage] = useState('');
-  const [rideCancelModal, setRideCancelModal] = useState(false);
-  
-  const riderUser = userData?.data;
 
-  const snapPoints = useMemo(() => ['40%', '60%'], []);
-  const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
+  // Timer state - starts at 2 minutes (120 seconds)
+  const [timeRemaining, setTimeRemaining] = useState(120);
+  const timerIntervalRef = useRef(null);
 
-  const mapHeight = height - bottomSheetHeight;
-  const handleBottomSheetChange = (index) => {
-    setBottomSheetHeight(height * 0.4);
+  // Panel expandable state
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+
+  console.log('DriverFoundScreen - Screen height:', height);
+
+  // Extract driver and ride information
+  const driverInfo = data?.driver || {};
+  const rideInfo = data?.ride || data?.data || {};
+  
+  console.log('DriverFoundScreen - Driver info:', driverInfo);
+  console.log('DriverFoundScreen - Ride info:', rideInfo);
+  
+  const pickupCoordinates = {
+    latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
+    longitude: parseFloat(rideInfo.pickup_longitude) || 6.9745,
   };
 
-  // Initialize Zustand store with route data
-  useEffect(() => {
-    if (data) {
-      try {
-        setDriverInfo(data?.driver);
-        setCurrentRide(data?.data || data?.ride);
-        if (data?.driver?.latitude && data?.driver?.longitude) {
-          setDriverCoordinates({
-            latitude: parseFloat(data.driver.latitude),
-            longitude: parseFloat(data.driver.longitude),
-          });
-        }
-      } catch (error) {
-        console.error('Error initializing driver data:', error);
-      }
-    }
-  }, [data, setDriverInfo, setCurrentRide, setDriverCoordinates]);
-  const pickupCoordinates = currentRide ? {
-    latitude: parseFloat(currentRide.pickup_latitude || currentRide.data?.pickup_latitude) || 4.8666,
-    longitude: parseFloat(currentRide.pickup_longitude || currentRide.data?.pickup_longitude) || 6.9745,
-  } : null;
+  const dropOffCoordinates = {
+    latitude: parseFloat(rideInfo.drop_latitude) || 4.8670,
+    longitude: parseFloat(rideInfo.drop_longitude) || 6.9750,
+  };
+
+  const driverCoordinates = {
+    latitude: parseFloat(driverInfo.latitude) || pickupCoordinates.latitude - 0.002,
+    longitude: parseFloat(driverInfo.longitude) || pickupCoordinates.longitude - 0.002,
+  };
   
-  const dropUpCoordinates = currentRide ? {
-    latitude: parseFloat(currentRide.drop_latitude || currentRide.data?.drop_latitude) || 4.8666,
-    longitude: parseFloat(currentRide.drop_longitude || currentRide.data?.drop_longitude) || 6.9745,
-  } : null;
+  console.log('DriverFoundScreen - Pickup coordinates:', pickupCoordinates);
+  console.log('DriverFoundScreen - Drop off coordinates:', dropOffCoordinates);
+  console.log('DriverFoundScreen - Driver coordinates:', driverCoordinates);
 
-  const isFetching = useRef(false);
-
-  useEffect(() => {
-    // Fetch user data when component mounts
-    fetchUser();
-  }, [fetchUser]);
-
-  const calculateRegion = useCallback(() => {
-    if (!driverCoordinates) return null;
-
-    const targetCoordinates = rideStartStatus ? dropUpCoordinates : pickupCoordinates || driverCoordinates;
-
-    const maxLat = Math.max(driverCoordinates.latitude, targetCoordinates.latitude);
-    const minLat = Math.min(driverCoordinates.latitude, targetCoordinates.latitude);
-    const minLon = Math.min(driverCoordinates.longitude, targetCoordinates.longitude);
-    const maxLon = Math.max(driverCoordinates.longitude, targetCoordinates.longitude);
+  // Calculate map region to show both driver and pickup location
+  const calculateRegion = () => {
+    const maxLat = Math.max(driverCoordinates.latitude, pickupCoordinates.latitude);
+    const minLat = Math.min(driverCoordinates.latitude, pickupCoordinates.latitude);
+    const minLon = Math.min(driverCoordinates.longitude, pickupCoordinates.longitude);
+    const maxLon = Math.max(driverCoordinates.longitude, pickupCoordinates.longitude);
     const midLat = (minLat + maxLat) / 2;
     const midLon = (minLon + maxLon) / 2;
-    const deltaLat = maxLat - minLat;
-    const deltaLon = maxLon - minLon;
+    const deltaLat = (maxLat - minLat) * 1.5;
+    const deltaLon = (maxLon - minLon) * 1.5;
 
     return {
       latitude: midLat,
       longitude: midLon,
-      latitudeDelta: pickupCoordinates || dropUpCoordinates ? deltaLat * 1.3 : deltaLat * 1.3,
-      longitudeDelta: pickupCoordinates || dropUpCoordinates ? deltaLon * 1.3 : deltaLon * 1.3,
+      latitudeDelta: Math.max(deltaLat, 0.01),
+      longitudeDelta: Math.max(deltaLon, 0.01),
     };
-  }, [driverCoordinates, pickupCoordinates, dropUpCoordinates, rideStartStatus]);
+    };
 
+  // Timer effect - counts down and navigates when reaching 0
   useEffect(() => {
-    if (driverCoordinates && mapRef.current) {
-      try {
-        const region = calculateRegion();
-        if (region) {
-          mapRef.current.animateToRegion(region, 1500);
+    console.log('Starting timer with 120 seconds');
+    timerIntervalRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          console.log('Timer reached 1, stopping timer');
+          clearInterval(timerIntervalRef.current);
+          return 0;
         }
-      } catch (error) {
-        console.error('Error animating to region:', error);
-      }
-    }
-  }, [driverCoordinates, pickupCoordinates, dropUpCoordinates, rideStartStatus]);
-
-  const intervalIdRef = useRef(null);
-
-  useEffect(() => {
-    intervalIdRef.current = setInterval(getRideDetails, 2000);
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => {
-      clearInterval(intervalIdRef.current);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
     };
-  }, [getRideDetails]);
+  }, []);
 
-  const getRideDetails = useCallback(async () => {
-    if (isFetching.current) return;
-    isFetching.current = true;
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Dummy ride details - no real API call
-      const dummyRideData = {
-        status: 200,
-        data: {
-          id: rideID,
-          start_trihp_status: 0, // 0 = pickup, 1 = started, 2 = completed
-          reached_driver_status: 1,
-          status: 1, // 1 = active, 3 = cancelled
-          pickup_latitude: currentRide?.pickup_latitude || 4.8666,
-          pickup_longitude: currentRide?.pickup_longitude || 6.9745,
-          drop_latitude: currentRide?.drop_latitude || 4.8666,
-          drop_longitude: currentRide?.drop_longitude || 6.9745,
-        },
-        driver: {
-          id: driverInfo?.id || 'dummy_driver_123',
-          first_name: driverInfo?.first_name || 'John',
-          phone_number: driverInfo?.phone_number || '+1234567890',
-          latitude: (driverCoordinates?.latitude || 4.8666) + (Math.random() - 0.5) * 0.001,
-          longitude: (driverCoordinates?.longitude || 6.9745) + (Math.random() - 0.5) * 0.001,
-          vehicle_category_id: driverInfo?.vehicle_category_id || 1,
-          rating: 4.8,
-        }
-      };
-      
-      console.log('Dummy ride details:', dummyRideData);
-      
-      setCurrentRide(dummyRideData.data);
-      if (dummyRideData.data.start_trihp_status !== 0) {
-        setRideStartStatus(true);
-      }
-      
-      const driver = dummyRideData.driver;
-      setDriverInfo(driver);
-      setDriverCoordinates({
-        latitude: parseFloat(driver.latitude),
-        longitude: parseFloat(driver.longitude),
-      });
-
-      // Simulate ride completion after some time
-      if (Math.random() < 0.1) { // 10% chance to complete ride
-        clearInterval(intervalIdRef.current);
-        router.push('/(tabs)/Dashboard', { rideId: rideID });
-      }
-
-      // Simulate ride cancellation (very low chance)
-      if (Math.random() < 0.05) { // 5% chance to cancel
-        showError('Ride is canceled by the driver');
-        clearInterval(intervalIdRef.current);
-        router.push('/(tabs)/Dashboard');
-      }
-      
-    } catch (error) {
-      console.log('Error in dummy ride details:', error);
-    } finally {
-      isFetching.current = false;
+  // Separate effect to handle navigation when timer reaches 0
+  useEffect(() => {
+    if (timeRemaining === 0) {
+      console.log('Timer reached 0, navigating to DriverArrivedScreen');
+      // Use setTimeout to ensure navigation happens after render
+      setTimeout(() => {
+        router.push('/booking/WaitingForDriverScreen', { data: data });
+      }, 0);
     }
-  }, [rideID, router, currentRide, driverInfo, driverCoordinates]);
+  }, [timeRemaining, router, data]);
 
-  const renderDriverMarker = () => {
-    // Simplified marker rendering - return null to avoid Marker component issues
-    return null;
+  // Format time remaining as MM:SS or just minutes
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins.toString().padStart(2, '0')}` : '00';
   };
 
-  const handleChat = async () => {
-    const user = await AsyncStorage.getItem('userDetail');
-    const userInfo = JSON.parse(user);
-    try {
-      // Note: Firebase integration would need to be set up for chat functionality
-      showWarning('Chat functionality requires Firebase setup');
-    } catch (error) {
-      console.error('Error in createChatList:', error);
-    }
+  const handleMessageDriver = () => {
+    showWarning('Message functionality coming soon');
   };
 
-  const startTriph = async () => {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Dummy start trip - no real API call
-      console.log('Dummy start trip:', {
-        rideId: rideID,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Simulate successful trip start
-      bottomSheetModalRef.current?.snapToIndex(0);
-      showSucess('Trip started successfully!');
-      setRideStartStatus(true);
-      
-    } catch (error) {
-      console.log('Error in dummy start trip:', error);
-    }
+  const handleCallDriver = () => {
+    const phoneNumber = driverInfo?.phone_number || driverInfo?.phone || '+1234567890';
+    Linking.openURL(`tel:${phoneNumber}`);
   };
+
+  const handleCancelTrip = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    router.push('/booking/RideCancelScreen', { 
+      data: rideInfo,
+      rideId: rideInfo?.id 
+    });
+  };
+
+  const togglePanelExpansion = () => {
+    setIsPanelExpanded(!isPanelExpanded);
+  };
+
+  // Data is now always available (either real or dummy)
+  console.log('DriverFoundScreen - Rendering main screen with data:', !!data);
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.blackColor }}>
+    <View style={styles.container}>
+      {/* Map Component */}
       <MapComponent
         ref={mapRef}
-        style={{
-          height: mapHeight,
-          width: '100%',
-        }}
+        style={styles.map}
         initialRegion={calculateRegion()}
-        originMarker={currentRide?.start_trihp_status == 0 ? {
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        markers={[
+          {
           ...pickupCoordinates,
           customMarker: (
-            <Image source={require('../../assets/images/originLocation.png')} style={{ width: 22, height: 30 }} resizeMode="contain" />
-          )
-        } : {
-          ...dropUpCoordinates,
+              <Image 
+                source={require('../../assets/images/pin.png')} 
+                style={styles.pickupMarker} 
+                resizeMode="contain" 
+              />
+            )
+          }
+        ]}
+        driverMarkers={[
+          {
+            ...driverCoordinates,
           customMarker: (
-            <Image source={require('../../assets/images/originLocation.png')} style={{ width: 22, height: 30 }} resizeMode="contain" />
-          )
-        }}
-        driverMarkers={driverCoordinates ? [{
-          ...driverCoordinates,
-          customMarker: renderDriverMarker()
-        }] : []}
+              <Image 
+                source={require('../../assets/images/car.png')} 
+                style={styles.driverMarker} 
+                resizeMode="contain" 
+              />
+            )
+          }
+        ]}
         showDirections={true}
         originCoordinates={driverCoordinates}
-        destinationCoordinates={currentRide?.start_trihp_status == 0 ? pickupCoordinates : dropUpCoordinates}
-        directionsStrokeWidth={6}
-        directionsStrokeColor="#000"
-        onDirectionsReady={(result) => {
-          try {
-            if (currentRide?.start_trihp_status == 0) {
-              const duration = result.legs[0].duration.text;
-              setPickupTime(duration);
-            } else {
-              const duration = result.legs[0].duration.text;
-              const durationParts = duration.split(' ');
-              const durationMins = parseInt(durationParts[0]);
-              setDurationMinutes(durationMins);
-              setDropOffTime(calculateDropOffTime(durationMins));
-            }
-          } catch (error) {
-            console.error('Error processing directions:', error);
-          }
-        }}
+        destinationCoordinates={pickupCoordinates}
+        directionsStrokeWidth={4}
+        directionsStrokeColor="#000000"
       />
-      <BottomSheet
-        ref={bottomSheetModalRef}
-        index={0}
-        snapPoints={snapPoints}
-        enablePanDownToClose={false}
-        handleIndicatorStyle={styles.bottomSheetHandleIndicator}
-        backgroundStyle={styles.bottomSheetBackground}
-        enableOverDrag={false}
-        onChange={handleBottomSheetChange}
+
+      {/* Back Button */}
+      <Pressable 
+        style={[styles.backButton, { top: Platform.OS === 'ios' ? 60 : 20 }]} 
+        onPress={() => {
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+          }
+          router.back();
+        }}
       >
-        <View style={{ paddingVertical: 20 }}>
-          <Text
-            style={{
-              ...Fonts.TextBold,
-              fontSize: 20,
-              textAlign: 'center',
-              marginBottom: 10,
-            }}
-          >
-            {currentRide?.start_trihp_status === 0 ? `Pickup-up in ${pickupTime}` : `Drop off by ${dropOffTime}`}
-          </Text>
-          {currentRide?.start_trihp_status !== 1 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: Colors.grey12,
-                padding: 10,
-                borderRadius: 10,
-                margin: 20,
-              }}
+        <View style={styles.backButtonCircle}>
+          <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
+        </View>
+      </Pressable>
+
+      {/* Driver Info Panel */}
+      <View style={[styles.driverPanel, { height: isPanelExpanded ? '80%' : '60%' }]}>
+        {/* Panel Header with Expand/Collapse Button */}
+        <Pressable style={styles.panelHeader} onPress={togglePanelExpansion}>
+          <View style={styles.panelHandle} />
+        </Pressable>
+
+        <ScrollView 
+          style={styles.driverPanelContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          
+          {/* Header with Timer */}
+          <View style={styles.headerSection}>
+            <Text style={styles.headerTitle}>Meet driver at the pickup location</Text>
+            <View style={styles.timerCircle}>
+              <Text style={styles.timerNumber}>{formatTime(timeRemaining)}</Text>
+              <Text style={styles.timerLabel}>Min</Text>
+            </View>
+          </View>
+
+          {/* Trip Details Section */}
+          <View style={styles.tripDetailsSection}>
+            {/* Pickup Location */}
+            <View style={styles.locationRow}>
+              <View style={styles.locationIconContainer}>
+                <View style={styles.pickupDot} />
+                <View style={styles.dashedLine} />
+              </View>
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationLabel}>Pickup Location</Text>
+              </View>
+              <Text style={styles.priceText}>${rideInfo?.amount || '25'}</Text>
+            </View>
+
+            {/* Drop off Location */}
+            <View style={styles.locationRow}>
+              <View style={styles.locationIconContainer}>
+                <Ionicons 
+                  name="location-sharp" 
+                  size={20} 
+                  color="#4CD964" 
+                />
+              </View>
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationLabel}>Drop off location</Text>
+              </View>
+              <View style={styles.paymentBadge}>
+                <Image 
+                  source={require('../../assets/images/paymentMode/cash.png')} 
+                  style={styles.paymentIcon} 
+                  resizeMode="contain" 
+                />
+                <Text style={styles.paymentText}>Cash</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsSection}>
+            <Pressable 
+              style={styles.messageButton}
+              onPress={handleMessageDriver}
             >
-              <Text style={{ ...Fonts.TextBold, fontSize: 15 }}>Trip Detail</Text>
+              <MaterialCommunityIcons 
+                name="message-processing" 
+                size={20} 
+                color="#4CD964" 
+              />
+              <Text style={styles.messageButtonText}>Message Driver</Text>
+            </Pressable>
+
               <Pressable
-                style={{
-                  padding: 10,
-                  backgroundColor: Colors.grey10,
-                  borderRadius: 5,
-                }}
-                onPress={() => router.push('/booking/RideCancelScreen', { data: currentRide })}
-              >
-                <Icon name="info-with-circle" size={20} color={Colors.whiteColor} />
+              style={styles.callButton}
+              onPress={handleCallDriver}
+            >
+              <Ionicons 
+                name="call" 
+                size={20} 
+                color="#FF3B30" 
+              />
+              <Text style={styles.callButtonText}>Call Driver</Text>
               </Pressable>
             </View>
-          )}
-          <View style={{ height: 2, backgroundColor: Colors.grey11, width: '100%' }} />
-          <View style={{ margin: 20, flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ gap: 10, flex: 1 }}>
-              <Text style={{ ...Fonts.TextBold, fontSize: 15 }}>UP80ED9262</Text>
-              <Text style={{ ...Fonts.Regular, fontSize: 15 }}>Maruti Suzuki Swift Dzire</Text>
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Driver Info Section */}
+          <View style={styles.driverInfoSection}>
+            <View style={styles.driverDetails}>
+              <Text style={styles.driverName}>
+                {driverInfo?.first_name || driverInfo?.name || 'Driver Name'}
+              </Text>
+              <Text style={styles.driverArrival}>
+                Arriving in {formatTime(timeRemaining)} mins
+              </Text>
+              <View style={styles.ratingContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons 
+                    key={star}
+                    name="star" 
+                    size={16} 
+                    color="#FFD700" 
+                  />
+                ))}
+              </View>
+              <Text style={styles.vehicleDescription}>
+                Vehicle description (Brand, color, Reg. NO.)
+              </Text>
             </View>
-            <View
-              style={{
-                flexDirection: 'row',
-              }}
-            >
+            <View style={styles.driverImageContainer}>
               <Image
                 source={
-                  driverInfo?.vehicle_category_id === 1
-                    ? require('../../assets/images/car.png')
-                    : driverInfo?.vehicle_category_id === 2
-                    ? require('../../assets/images/bike.png')
-                    : driverInfo?.vehicle_category_id === 3
-                    ? require('../../assets/images/auto.png')
-                    : driverInfo?.vehicle_category_id === 4
-                    ? require('../../assets/images/lite.png')
-                    : driverInfo?.vehicle_category_id === 5
-                    ? require('../../assets/images/suv.png')
-                    : require('../../assets/images/luxe.png')
+                  driverInfo?.profile_image 
+                    ? { uri: driverInfo.profile_image }
+                    : require('../../assets/images/user.jpg')
                 }
-                style={{ height: 50, width: 100 }}
+                style={styles.driverImage}
+                resizeMode="cover"
+              />
+              <Image
+                source={require('../../assets/images/car.png')}
+                style={styles.vehicleImage}
                 resizeMode="contain"
               />
             </View>
           </View>
-          <View
-            style={{
-              paddingHorizontal: 20,
-              paddingBottom: 20,
-              gap: 10,
-              paddingTop: 10,
-            }}
-          >
-            <Text style={{ ...Fonts.Regular, textAlign: 'center' }}>{driverInfo?.first_name} is your Driver</Text>
-            <View
-              style={{
-                padding: 8,
-                backgroundColor: Colors.grey12,
-                borderRadius: 5,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                alignSelf: 'center',
-              }}
-            >
-              <Icon name="star" size={13} color={Colors.whiteColor} />
-              <Text style={{ ...Fonts.Regular, fontSize: 13 }}>{data?.review?.rating}</Text>
-            </View>
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 10,
-              alignItems: 'center',
-              marginBottom: 20,
-              paddingHorizontal: 20,
-            }}
-          >
-            <Pressable
-              style={{
-                padding: 15,
-                backgroundColor: Colors.grey11,
-                borderRadius: 50,
-                flex: 0.7,
-              }}
-              onPress={() => {
-                handleChat();
-              }}
-            >
-              <Text style={{ ...Fonts.Regular, fontSize: 12 }}>Any message for driver ?</Text>
-            </Pressable>
-            <Pressable
-              style={{
-                padding: 10,
-                backgroundColor: Colors.grey11,
-                borderRadius: 50,
-              }}
-              onPress={() => Linking.openURL(`tel:${driverInfo?.phone_number}`)}
-            >
-              <Icon2 name="call" size={16} color={Colors.whiteColor} />
-            </Pressable>
-          </View>
-          <View style={{ height: 2, backgroundColor: Colors.grey11, width: '100%' }} />
 
-          {currentRide?.reached_driver_status === 1 && currentRide?.start_trihp_status === 0 && (
+          {/* Cancel Trip Button */}
+          <View style={styles.cancelButtonContainer}>
             <TriphButton
-              text="I Have Verified My Ride"
-              extraStyle={{
-                margin: 10,
-                borderRadius: 10,
-              }}
-              onPress={() => {
-                startTriph();
-              }}
+              text="Cancel Trip"
+              onPress={handleCancelTrip}
+              extraStyle={styles.cancelButton}
+              extraTextStyle={styles.cancelButtonText}
+              bgColor={{ backgroundColor: '#FFD700' }}
             />
-          )}
-        </View>
-      </BottomSheet>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -440,14 +417,319 @@ const DriverFoundScreen = () => {
 export default DriverFoundScreen;
 
 const styles = StyleSheet.create({
-  bottomSheetHandleIndicator: {
-    backgroundColor: Colors.grey9,
-    width: 30,
-    height: 3,
-    marginTop: 5,
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
-  bottomSheetBackground: {
-    backgroundColor: Colors.blackColor,
-    borderRadius: 20,
+  map: {
+    flex: 1,
+    width: '100%',
+  },
+  pickupMarker: {
+    width: 40,
+    height: 40,
+  },
+  driverMarker: {
+    width: 50,
+    height: 50,
+  },
+
+  // Back Button Styles
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  // Driver Panel Styles
+  driverPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#000000',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  panelHeader: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  panelHandle: {
+    width: 50,
+    height: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 3,
+    alignSelf: 'center',
+  },
+  driverPanelContent: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+
+  // Header Section
+  headerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  headerTitle: {
+    ...Fonts.Regular,
+    fontSize: 18,
+    fontWeight: '500',
+    color: Colors.whiteColor,
+    flex: 1,
+  },
+  timerCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    borderColor: Colors.whiteColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  timerNumber: {
+    ...Fonts.Regular,
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.whiteColor,
+  },
+  timerLabel: {
+    ...Fonts.Regular,
+    fontSize: 12,
+    color: Colors.whiteColor,
+    marginTop: 2,
+  },
+
+  // Trip Details Section
+  tripDetailsSection: {
+    paddingBottom: 15,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  locationIconContainer: {
+    width: 30,
+    alignItems: 'center',
+  },
+  pickupDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: Colors.whiteColor,
+  },
+  dashedLine: {
+    width: 2,
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginTop: 4,
+  },
+  locationTextContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  locationLabel: {
+    ...Fonts.Regular,
+    fontSize: 15,
+    color: Colors.whiteColor,
+  },
+  priceText: {
+    ...Fonts.Regular,
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.whiteColor,
+  },
+  paymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    gap: 6,
+  },
+  paymentIcon: {
+    width: 20,
+    height: 20,
+  },
+  paymentText: {
+    ...Fonts.Regular,
+    fontSize: 14,
+    color: Colors.whiteColor,
+  },
+
+  // Action Buttons Section
+  actionButtonsSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.whiteColor,
+    paddingVertical: 14,
+    borderRadius: 25,
+    gap: 8,
+  },
+  messageButtonText: {
+    ...Fonts.Regular,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  callButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.whiteColor,
+    paddingVertical: 14,
+    borderRadius: 25,
+    gap: 8,
+  },
+  callButtonText: {
+    ...Fonts.Regular,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000000',
+  },
+
+  // Divider
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 20,
+  },
+
+  // Driver Info Section
+  driverInfoSection: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  driverDetails: {
+    flex: 1,
+  },
+  driverName: {
+    ...Fonts.Regular,
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.whiteColor,
+    marginBottom: 4,
+  },
+  driverArrival: {
+    ...Fonts.Regular,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 8,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  vehicleDescription: {
+    ...Fonts.Regular,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  driverImageContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+  },
+  driverImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: Colors.whiteColor,
+  },
+  vehicleImage: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    width: 60,
+    height: 40,
+  },
+
+  // Cancel Button
+  cancelButtonContainer: {
+    marginTop: 10,
+  },
+  cancelButton: {
+    backgroundColor: '#FFD700',
+    borderRadius: 30,
+    paddingVertical: 16,
+  },
+  cancelButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 10,
+    fontWeight: '600',
+  },
+  loadingMessage: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
   },
 });
+
+
