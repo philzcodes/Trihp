@@ -1,7 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import LottieView from 'lottie-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
@@ -18,7 +17,7 @@ import { MapComponent } from '../../components';
 import { Colors, Fonts } from '../../constants';
 import { showWarning } from '../../helper/Toaster';
 
-const WaitingForDriverScreen = () => {
+const TripInProgressScreen = () => {
   const params = useLocalSearchParams();
   
   // Parse the data parameter if it's a JSON string
@@ -36,7 +35,7 @@ const WaitingForDriverScreen = () => {
     data = null;
   }
 
-  console.log('WaitingForDriverScreen - Received data:', data);
+  console.log('TripInProgressScreen - Received data:', data);
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
@@ -44,11 +43,11 @@ const WaitingForDriverScreen = () => {
   const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
 
-  // Timer state for auto-navigation (e.g., 30 seconds before starting trip)
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  // Timer for trip completion (e.g., 60 seconds)
+  const [timeRemaining, setTimeRemaining] = useState(60);
   const timerIntervalRef = useRef(null);
 
-  const snapPoints = useMemo(() => ['50%', '70%'], []);
+  const snapPoints = useMemo(() => ['40%', '60%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
 
   const mapHeight = height - bottomSheetHeight;
@@ -57,8 +56,6 @@ const WaitingForDriverScreen = () => {
     const snapPointValue = parseFloat(snapPoints[index]);
     setBottomSheetHeight(height * (snapPointValue / 100));
   };
-
-  console.log('WaitingForDriverScreen - Screen height:', height);
 
   // Extract driver and ride information
   const driverInfo = data?.driver || {};
@@ -74,18 +71,18 @@ const WaitingForDriverScreen = () => {
     longitude: parseFloat(rideInfo.drop_longitude) || 6.9750,
   };
 
-  // Driver is now at pickup location
-  const driverCoordinates = {
-    latitude: pickupCoordinates.latitude,
-    longitude: pickupCoordinates.longitude,
-  };
+  // Driver is now moving towards destination (simulate position between pickup and dropoff)
+  const [driverCoordinates, setDriverCoordinates] = useState({
+    latitude: pickupCoordinates.latitude + (dropOffCoordinates.latitude - pickupCoordinates.latitude) * 0.3,
+    longitude: pickupCoordinates.longitude + (dropOffCoordinates.longitude - pickupCoordinates.longitude) * 0.3,
+  });
 
   // Calculate map region to show route to destination
   const calculateRegion = () => {
-    const maxLat = Math.max(pickupCoordinates.latitude, dropOffCoordinates.latitude);
-    const minLat = Math.min(pickupCoordinates.latitude, dropOffCoordinates.latitude);
-    const minLon = Math.min(pickupCoordinates.longitude, dropOffCoordinates.longitude);
-    const maxLon = Math.max(pickupCoordinates.longitude, dropOffCoordinates.longitude);
+    const maxLat = Math.max(driverCoordinates.latitude, dropOffCoordinates.latitude);
+    const minLat = Math.min(driverCoordinates.latitude, dropOffCoordinates.latitude);
+    const minLon = Math.min(driverCoordinates.longitude, dropOffCoordinates.longitude);
+    const maxLon = Math.max(driverCoordinates.longitude, dropOffCoordinates.longitude);
     const midLat = (minLat + maxLat) / 2;
     const midLon = (minLon + maxLon) / 2;
     const deltaLat = (maxLat - minLat) * 1.5;
@@ -99,23 +96,31 @@ const WaitingForDriverScreen = () => {
     };
   };
 
-  // Timer effect - counts down and navigates to trip started screen
+  // Timer effect - simulates trip progress and completion
   useEffect(() => {
+    let progress = 0.3; // Start at 30% of the journey
+
     timerIntervalRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timerIntervalRef.current);
-          // Navigate to trip started/in progress screen
-          router.push({
-            pathname: '/booking/TripInProgressScreen',
-            params: {
-              data: JSON.stringify(data)
-            }
-          });
+          // Navigate to trip completed screen
+          router.push('/booking/TripCompletedScreen', { data: data });
           return 0;
         }
         return prev - 1;
       });
+
+      // Update driver position gradually towards destination
+      progress += 0.01;
+      if (progress <= 0.95) {
+        setDriverCoordinates({
+          latitude: pickupCoordinates.latitude + 
+            (dropOffCoordinates.latitude - pickupCoordinates.latitude) * progress,
+          longitude: pickupCoordinates.longitude + 
+            (dropOffCoordinates.longitude - pickupCoordinates.longitude) * progress,
+        });
+      }
     }, 1000);
 
     return () => {
@@ -123,7 +128,7 @@ const WaitingForDriverScreen = () => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [router, data]);
+  }, [router, data, pickupCoordinates, dropOffCoordinates]);
 
   const handleMessageDriver = () => {
     showWarning('Message functionality coming soon');
@@ -134,43 +139,41 @@ const WaitingForDriverScreen = () => {
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
+  const handleSupport = () => {
+    showWarning('Support functionality coming soon');
+  };
+
+  const handleChangeDestination = () => {
+    router.push('/booking/SearchScreen');
+  };
+
   // Calculate drop off time
   const getDropOffTime = () => {
     const now = new Date();
-    // Add estimated time (e.g., 15 minutes)
-    const estimatedMinutes = 15;
+    const estimatedMinutes = Math.ceil(timeRemaining / 60);
     now.setMinutes(now.getMinutes() + estimatedMinutes);
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  // Safety check for data - provide fallback data if missing
+  // Safety check for data
   if (!data) {
-    console.log('WaitingForDriverScreen - No data received, using fallback data');
-    // Provide fallback data to prevent infinite loading
-    data = {
-      driver: {
-        first_name: 'Micheal Edem',
-        name: 'Micheal Edem',
-        phone_number: '+1234567890',
-        profile_image: null,
-        latitude: 4.8666,
-        longitude: 6.9745,
-      },
-      ride: {
-        pickup_latitude: 4.8666,
-        pickup_longitude: 6.9745,
-        drop_latitude: 4.8670,
-        drop_longitude: 6.9750,
-        amount: '25',
-        distance: '5.2 km',
-        payment_type: 'Cash',
-      }
-    };
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingTitle}>Loading...</Text>
+          <Text style={styles.loadingMessage}>
+            Please wait while we prepare trip details.
+          </Text>
+        </View>
+      </View>
+    );
   }
 
-  const driverName = driverInfo?.first_name || driverInfo?.name || 'Micheal Edem';
+  const driverName = driverInfo?.first_name || driverInfo?.name || 'Driver Name';
 
   return (
     <View style={styles.container}>
@@ -206,26 +209,11 @@ const WaitingForDriverScreen = () => {
           }
         ]}
         showDirections={true}
-        originCoordinates={pickupCoordinates}
+        originCoordinates={driverCoordinates}
         destinationCoordinates={dropOffCoordinates}
         directionsStrokeWidth={4}
         directionsStrokeColor="#000000"
       />
-
-      {/* Back Button */}
-      <Pressable 
-        style={[styles.backButton, { top: Platform.OS === 'ios' ? 60 : 20 }]} 
-        onPress={() => {
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-          }
-          router.back();
-        }}
-      >
-        <View style={styles.backButtonCircle}>
-          <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
-        </View>
-      </Pressable>
 
       {/* Bottom Sheet */}
       <BottomSheet
@@ -244,19 +232,7 @@ const WaitingForDriverScreen = () => {
         <View style={styles.bottomSheetContent}>
           {/* Header Section */}
           <View style={styles.headerSection}>
-            <Text style={styles.headerTitle}>
-              Waiting for "{driverName}"{'\n'}to start the trip
-            </Text>
-          </View>
-
-          {/* Loading Spinner */}
-          <View style={styles.spinnerContainer}>
-            <LottieView 
-              source={require('../../assets/svgIcons/spinner.json')} 
-              autoPlay 
-              loop 
-              style={styles.spinner} 
-            />
+            <Text style={styles.headerTitle}>Driving to Your Destination</Text>
           </View>
 
           {/* Divider */}
@@ -265,32 +241,24 @@ const WaitingForDriverScreen = () => {
           {/* Driver Info Section */}
           <View style={styles.driverInfoSection}>
             <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>
-                {driverName}
-              </Text>
-              <Text style={styles.driverStatus}>Arrived</Text>
+              <Text style={styles.driverName}>{driverName}</Text>
               <View style={styles.ratingContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Ionicons 
                     key={star}
                     name="star" 
-                    size={18} 
+                    size={20} 
                     color="#FFD700" 
                   />
                 ))}
               </View>
-              <Text style={styles.vehicleInfo}>
-                Brand Of Car - MM1428
-              </Text>
-              <Text style={styles.dropOffTime}>
-                Drop off by {getDropOffTime()}
-              </Text>
+              <Text style={styles.vehicleInfo}>Brand Of Car - MM1428</Text>
             </View>
             
             <View style={styles.driverImageContainer}>
               <Image
                 source={
-                  driverInfo?.profile_image 
+                  driverInfo?.profile_image
                     ? { uri: driverInfo.profile_image }
                     : require('../../assets/images/user.jpg')
                 }
@@ -305,8 +273,11 @@ const WaitingForDriverScreen = () => {
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsSection}>
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Action Buttons Row */}
+          <View style={styles.actionButtonsRow}>
             <Pressable 
               style={styles.callButton}
               onPress={handleCallDriver}
@@ -328,6 +299,47 @@ const WaitingForDriverScreen = () => {
                 color="#4CD964" 
               />
             </Pressable>
+
+            <Pressable 
+              style={styles.supportButton}
+              onPress={handleSupport}
+            >
+              <Ionicons 
+                name="information-circle" 
+                size={20} 
+                color="rgba(255, 255, 255, 0.7)" 
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.supportButtonText}>Support</Text>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color="rgba(255, 255, 255, 0.7)" 
+                style={{ marginLeft: 4 }}
+              />
+            </Pressable>
+          </View>
+
+          {/* Drop Off Time */}
+          <View style={styles.dropOffTimeSection}>
+            <Text style={styles.dropOffTimeText}>
+              Drop off by {getDropOffTime()}
+            </Text>
+          </View>
+
+          {/* Drop Off Location */}
+          <View style={styles.dropOffLocationSection}>
+            <View style={styles.locationRow}>
+              <Ionicons 
+                name="location-sharp" 
+                size={24} 
+                color="#4CD964" 
+              />
+              <Text style={styles.locationText}>Drop off location</Text>
+            </View>
+            <Pressable onPress={handleChangeDestination}>
+              <Text style={styles.changeText}>Change</Text>
+            </Pressable>
           </View>
         </View>
       </BottomSheet>
@@ -335,7 +347,7 @@ const WaitingForDriverScreen = () => {
   );
 };
 
-export default WaitingForDriverScreen;
+export default TripInProgressScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -352,29 +364,6 @@ const styles = StyleSheet.create({
   driverMarker: {
     width: 50,
     height: 50,
-  },
-
-  // Back Button Styles
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    zIndex: 10,
-  },
-  backButtonCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
 
   // Bottom Sheet Styles
@@ -395,28 +384,16 @@ const styles = StyleSheet.create({
 
   // Header Section
   headerSection: {
-    paddingTop: 10,
-    paddingBottom: 15,
     paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 20,
   },
   headerTitle: {
     ...Fonts.Regular,
-    fontSize: 22,
-    fontWeight: '500',
+    fontSize: 24,
+    fontWeight: '600',
     textAlign: 'center',
     color: Colors.whiteColor,
-    lineHeight: 30,
-  },
-
-  // Spinner Section
-  spinnerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 25,
-  },
-  spinner: {
-    width: 80,
-    height: 80,
   },
 
   // Divider
@@ -424,14 +401,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
   },
 
   // Driver Info Section
   driverInfoSection: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 25,
+    paddingVertical: 20,
   },
   driverDetails: {
     flex: 1,
@@ -441,26 +417,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: Colors.whiteColor,
-    marginBottom: 4,
-  },
-  driverStatus: {
-    ...Fonts.Regular,
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 8,
   },
   ratingContainer: {
     flexDirection: 'row',
     gap: 4,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   vehicleInfo: {
-    ...Fonts.Regular,
-    fontSize: 15,
-    color: Colors.whiteColor,
-    marginBottom: 6,
-  },
-  dropOffTime: {
     ...Fonts.Regular,
     fontSize: 15,
     color: Colors.whiteColor,
@@ -468,35 +432,36 @@ const styles = StyleSheet.create({
   driverImageContainer: {
     position: 'relative',
     width: 100,
-    height: 100,
+    height: 80,
   },
   driverImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     borderWidth: 2,
     borderColor: Colors.whiteColor,
   },
   vehicleImage: {
     position: 'absolute',
-    bottom: -10,
-    right: -10,
+    bottom: -5,
+    right: -5,
     width: 60,
     height: 40,
   },
 
-  // Action Buttons Section
-  actionButtonsSection: {
+  // Action Buttons Row
+  actionButtonsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 15,
-    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+    alignItems: 'center',
   },
   callButton: {
-    width: 120,
-    height: 55,
+    width: 70,
+    height: 50,
     backgroundColor: Colors.whiteColor,
-    borderRadius: 30,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -509,10 +474,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   messageButton: {
-    width: 120,
-    height: 55,
+    width: 70,
+    height: 50,
     backgroundColor: Colors.whiteColor,
-    borderRadius: 30,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -523,6 +488,60 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  supportButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(139, 69, 69, 0.8)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  supportButtonText: {
+    ...Fonts.Regular,
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+
+  // Drop Off Time Section
+  dropOffTimeSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  dropOffTimeText: {
+    ...Fonts.Regular,
+    fontSize: 18,
+    fontWeight: '500',
+    color: Colors.whiteColor,
+  },
+
+  // Drop Off Location Section
+  dropOffLocationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  locationText: {
+    ...Fonts.Regular,
+    fontSize: 16,
+    color: Colors.whiteColor,
+  },
+  changeText: {
+    ...Fonts.Regular,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFD700',
   },
 
   // Loading State

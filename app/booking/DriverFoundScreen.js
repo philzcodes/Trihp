@@ -185,7 +185,7 @@ const DriverFoundScreen = () => {
       // Use setTimeout to ensure navigation happens after render
       setTimeout(() => {
         router.push({
-          pathname: '/booking/WaitingForDriverScreen',
+          pathname: '/booking/DriverArrivedScreen',
           params: {
             data: JSON.stringify(data)
           }
