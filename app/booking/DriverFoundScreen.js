@@ -96,7 +96,7 @@ const DriverFoundScreen = () => {
   const insets = useSafeAreaInsets();
 
   // Timer state - starts at 2 minutes (120 seconds)
-  const [timeRemaining, setTimeRemaining] = useState(120);
+  const [timeRemaining, setTimeRemaining] = useState(10);
   const timerIntervalRef = useRef(null);
 
   const snapPoints = useMemo(() => ['60%', '80%'], []);

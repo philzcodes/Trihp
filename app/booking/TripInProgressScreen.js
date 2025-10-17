@@ -20,22 +20,25 @@ import { showWarning } from '../../helper/Toaster';
 const TripInProgressScreen = () => {
   const params = useLocalSearchParams();
   
-  // Parse the data parameter if it's a JSON string
-  let data = null;
-  try {
-    if (params?.data) {
-      if (typeof params.data === 'string') {
-        data = JSON.parse(params.data);
-      } else {
-        data = params.data;
+  // Parse data using useMemo to prevent continuous re-renders
+  const data = useMemo(() => {
+    let parsedData = null;
+    try {
+      if (params?.data) {
+        if (typeof params.data === 'string') {
+          parsedData = JSON.parse(params.data);
+        } else {
+          parsedData = params.data;
+        }
       }
+    } catch (error) {
+      console.error('Error parsing data parameter:', error);
+      parsedData = null;
     }
-  } catch (error) {
-    console.error('Error parsing data parameter:', error);
-    data = null;
-  }
 
-  console.log('TripInProgressScreen - Received data:', data);
+    console.log('TripInProgressScreen - Received data:', parsedData);
+    return parsedData;
+  }, [params?.data]);
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
@@ -46,6 +49,7 @@ const TripInProgressScreen = () => {
   // Timer for trip completion (e.g., 60 seconds)
   const [timeRemaining, setTimeRemaining] = useState(60);
   const timerIntervalRef = useRef(null);
+  const timerStartedRef = useRef(false);
 
   const snapPoints = useMemo(() => ['40%', '60%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
@@ -61,15 +65,16 @@ const TripInProgressScreen = () => {
   const driverInfo = data?.driver || {};
   const rideInfo = data?.ride || data?.data || {};
   
-  const pickupCoordinates = {
+  // Memoize coordinates to prevent useEffect re-runs
+  const pickupCoordinates = useMemo(() => ({
     latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
     longitude: parseFloat(rideInfo.pickup_longitude) || 6.9745,
-  };
+  }), [rideInfo.pickup_latitude, rideInfo.pickup_longitude]);
 
-  const dropOffCoordinates = {
+  const dropOffCoordinates = useMemo(() => ({
     latitude: parseFloat(rideInfo.drop_latitude) || 4.8670,
     longitude: parseFloat(rideInfo.drop_longitude) || 6.9750,
-  };
+  }), [rideInfo.drop_latitude, rideInfo.drop_longitude]);
 
   // Driver is now moving towards destination (simulate position between pickup and dropoff)
   const [driverCoordinates, setDriverCoordinates] = useState({
@@ -96,8 +101,11 @@ const TripInProgressScreen = () => {
     };
   };
 
-  // Timer effect - simulates trip progress and completion
+  // Timer effect - simulates trip progress and completion (runs only once)
   useEffect(() => {
+    if (timerStartedRef.current) return; // Prevent multiple timer starts
+    timerStartedRef.current = true;
+    
     let progress = 0.3; // Start at 30% of the journey
 
     timerIntervalRef.current = setInterval(() => {
@@ -131,7 +139,7 @@ const TripInProgressScreen = () => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [router, data, pickupCoordinates, dropOffCoordinates]);
+  }, []); // Empty dependency array - only run once
 
   const handleMessageDriver = () => {
     showWarning('Message functionality coming soon');

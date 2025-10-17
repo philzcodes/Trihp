@@ -45,7 +45,7 @@ const WaitingForDriverScreen = () => {
   const insets = useSafeAreaInsets();
 
   // Timer state for auto-navigation (e.g., 30 seconds before starting trip)
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [timeRemaining, setTimeRemaining] = useState(10);
   const timerIntervalRef = useRef(null);
 
   const snapPoints = useMemo(() => ['50%', '70%'], []);

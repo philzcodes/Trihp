@@ -79,7 +79,7 @@ const TripCompletedScreen = () => {
   const [rating, setRating] = useState(0);
   const [hoveredStar, setHoveredStar] = useState(0);
 
-  const snapPoints = useMemo(() => ['35%', '50%'], []);
+  const snapPoints = useMemo(() => ['35%', '60%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
 
   const mapHeight = height - bottomSheetHeight;
