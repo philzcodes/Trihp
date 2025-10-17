@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { STATUS_BAR_HEIGHT } from '../../constants/Measurements';
@@ -11,8 +12,10 @@ import Constant from '../../helper/Constant';
 import { showError, showSuccess } from '../../helper/Toaster';
 import { formatTime, formatUTCDateTime } from '../../helper/formatDate';
 
-const GenerateReciept = ({ route, navigation }) => {
-  const { item: Info } = route.params;
+const GenerateReciept = () => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { item: Info } = params;
   const [loading, setLoading] = useState(false);
 
   const onDownload = async () => {
@@ -69,7 +72,7 @@ const GenerateReciept = ({ route, navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT + 20 }]}>
-      <BackHeader title="Trihp Wallet" onPress={() => navigation.goBack()} />
+      <BackHeader title="Trihp Wallet" onPress={() => router.back()} />
       <View style={styles.content}>
         <Text style={styles.greeting}>Hello John,</Text>
         <Text style={styles.thankYou}>Thank you for using Trihp. {Info.ride_category}</Text>

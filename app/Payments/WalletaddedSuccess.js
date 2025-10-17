@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { STATUS_BAR_HEIGHT } from '../../constants/Measurements';
@@ -8,11 +8,11 @@ import { Colors, Fonts } from '../../constants/Styles';
 const AFRIMONEY_LOGO = require('../../assets/images/paymentMode/afrimoney.png');
 
 const WalletAddedSuccess = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   
   // Get wallet type from params (default to Afrimoney)
-  const { walletType = 'Afrimoney', walletLogo = AFRIMONEY_LOGO } = route.params || {};
+  const { walletType = 'Afrimoney', walletLogo = AFRIMONEY_LOGO } = params || {};
 
   // Animation references
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -48,7 +48,7 @@ const WalletAddedSuccess = () => {
             styles.backButton,
             pressed && styles.backButtonPressed,
           ]}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
         </Pressable>

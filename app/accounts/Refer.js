@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import BackHeader from '../../components/BackHeader';
@@ -7,14 +7,14 @@ import { STATUS_BAR_HEIGHT } from '../../constants/Measurements';
 import { Colors, Fonts } from '../../constants/Styles';
 
 const Refer = () => {
-  const navigation = useNavigation();
+  const router = useRouter();
   
   // Sample referral code - you can replace this with dynamic data
   const referralCode = "X0GHTRFP";
 
   return (
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT + 20 }]}>
-      <BackHeader title="Refer" onPress={() => navigation.goBack()} />
+      <BackHeader title="Refer" onPress={() => router.back()} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Centered image at the top - full width */}

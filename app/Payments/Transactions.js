@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import BackHeader from '../../components/BackHeader';
@@ -11,7 +11,7 @@ import { formatCurrency } from '../../helper/distancesCalculate';
 import { formatTime, formatUTCDate } from '../../helper/formatDate';
 
 const Transactions = () => {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [transaction, setTransaction] = useState(null);
   const [isModalVisible, setModalVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('');
@@ -102,7 +102,7 @@ const Transactions = () => {
       <BackHeader
         title="Transactions Details"
         styles={{ fontSize: 10 }}
-        onPress={() => navigation.goBack()}
+        onPress={() => router.back()}
         iconFilter
         onFilterPress={() => setModalVisible(true)}
       />

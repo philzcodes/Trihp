@@ -1,16 +1,15 @@
-import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import BackHeader from '../../components/BackHeader';
 import { STATUS_BAR_HEIGHT } from '../../constants/Measurements';
@@ -19,7 +18,6 @@ import { Colors, Fonts } from '../../constants/Styles';
 const AFRIMONEY_LOGO = require('../../assets/images/paymentMode/afrimoney.png');
 
 const AddAfrimoneyWallet = () => {
-  const navigation = useNavigation();
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -46,7 +44,7 @@ const AddAfrimoneyWallet = () => {
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT }]}>
       <BackHeader 
         title="Add Afrimoney Wallet" 
-        onPress={() => navigation.goBack()} 
+        onPress={() => router.back()} 
       />
 
       <KeyboardAvoidingView

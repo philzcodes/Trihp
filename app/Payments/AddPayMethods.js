@@ -11,7 +11,7 @@ import { Colors, Fonts } from '../../constants/Styles';
 const AFRIMONEY_LOGO = require('../../assets/images/paymentMode/afrimoney.png');
 
 const AddPayMethods = () => {
-  const navigation = useRouter();
+  const router = useRouter();
   const [isCardModalVisible, setCardModalVisible] = useState(false);
   const [isMobileMoneyModalVisible, setMobileMoneyModalVisible] = useState(false);
 
@@ -41,7 +41,7 @@ const AddPayMethods = () => {
 
   return (
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT }]}>
-      <BackHeader title="Add Payment Method" onPress={() => navigation.goBack()} />
+      <BackHeader title="Add Payment Method" onPress={() => router.back()} />
 
       <View style={styles.contentArea}>
         <Text style={styles.headerText}>Add Payment Method</Text>

@@ -1,13 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import BackHeader from '../../components/BackHeader';
 import RemoveWalletModal from '../../components/Modals/Removewalletmodal';
@@ -17,8 +17,7 @@ import { Colors, Fonts } from '../../constants/Styles';
 const AFRIMONEY_LOGO = require('../../assets/images/paymentMode/afrimoney.png');
 
 const ManageMobileMoney = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const router = useRouter();
 
   // Get wallet details from params
   const {
@@ -50,7 +49,7 @@ const ManageMobileMoney = () => {
     // Handle wallet removal logic
     console.log('Wallet removed');
     setRemoveModalVisible(false);
-    navigation.goBack();
+    router.back();
   };
 
   const cancelRemove = () => {
@@ -61,7 +60,7 @@ const ManageMobileMoney = () => {
     <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT }]}>
       <BackHeader
         title="Manage Mobile Money"
-        onPress={() => navigation.goBack()}
+        onPress={() => router.back()}
       />
 
       <ScrollView
