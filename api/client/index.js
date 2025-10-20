@@ -1,9 +1,9 @@
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 // API Configuration
 const API_CONFIG = {
-  baseUrl: 'http://192.168.118.131:6000/auth/user/', // Same as old app
+  baseUrl: 'https://trihp-system-backend.onrender.com/api/trihp/v1', // Updated to use Trihp backend
   timeout: 10000,
 };
 

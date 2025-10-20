@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons'; // Correct icon library
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -10,24 +10,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-// Assuming TriphButton and custom constants are available
-// import { TriphButton } from '../../components'; // I'll inline the button structure for a complete example
-// import { Colors, Fonts } from '../../constants'; 
-
-// --- Dummy Constants for Standalone Code ---
-const Colors = {
-  blackColor: '#000000',
-  whiteColor: '#FFFFFF',
-  yellow: '#FFC700', // Primary button color from the image
-  grey10: '#333333', // Darker grey for borders
-  grey11: '#222222', // Background for OTP boxes
-  grey14: '#999999', // Subtitle and timer text color
-};
-const Fonts = {
-  TextBold: { fontFamily: 'System' /* Replace with actual Bold font */, fontWeight: '700' },
-  Regular: { fontFamily: 'System' /* Replace with actual Regular font */, fontWeight: '400' },
-};
-// --- End Dummy Constants ---
+import { authAPI } from '../../api/services';
+import { Colors, Fonts } from '../../constants';
 
 const INITIAL_TIMER = 60;
 
@@ -71,6 +55,11 @@ const OTP = () => {
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef([]);
   
+  // Get email and userType from route params
+  const email = params.email || '';
+  const userType = params.userType || 'RIDER';
+  const fromRegistration = params.fromRegistration === 'true';
+  
   const { secondsLeft, resetTimer, isActive: timerActive } = useCountdown(INITIAL_TIMER);
 
   const handleOtpChange = (value, index) => {
@@ -109,34 +98,84 @@ const OTP = () => {
       return;
     }
 
+    if (!email) {
+      Alert.alert('Error', 'Email not found. Please try registering again.');
+      return;
+    }
+
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const verificationData = {
+        email: email,
+        otp: otpString,
+        userType: userType
+      };
+
+      const response = await authAPI.verifyEmail(verificationData);
       
       setLoading(false);
       
-      Alert.alert('Success', 'OTP verified successfully!');
-      router.replace('/');
+      if (response.success) {
+        Alert.alert('Success', response.message || 'Email verified successfully!');
+        
+        if (fromRegistration) {
+          // Navigate to login screen after successful registration
+          router.replace('/(auth)/Login');
+        } else {
+          // Navigate to main app
+          router.replace('/');
+        }
+      } else {
+        Alert.alert('Error', response.message || 'Invalid or expired code. Please try again.');
+      }
       
     } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'Invalid or expired code. Please try again.');
+      console.error('OTP verification error:', error);
+      
+      if (error.message) {
+        Alert.alert('Error', error.message);
+      } else if (error.error) {
+        Alert.alert('Error', error.error);
+      } else {
+        Alert.alert('Error', 'Invalid or expired code. Please try again.');
+      }
     }
   };
 
-  const resendOtp = () => {
+  const resendOtp = async () => {
     if (timerActive) {
       Alert.alert('Wait', `You can resend the code in ${secondsLeft} seconds.`);
       return;
     }
-    Alert.alert('Code Sent', 'A new code has been sent to your contacts.');
-    resetTimer(); // Start the timer again
+
+    if (!email) {
+      Alert.alert('Error', 'Email not found. Please try registering again.');
+      return;
+    }
+
+    try {
+      // For now, we'll simulate resending OTP
+      // In a real implementation, you might have a resend OTP endpoint
+      Alert.alert('Code Sent', `A new code has been sent to ${email}`);
+      resetTimer(); // Start the timer again
+    } catch (error) {
+      Alert.alert('Error', 'Failed to resend code. Please try again.');
+    }
   };
 
-  // The displayed contact information
-  const contactInfo = `+232 3432**** or @gmail.com`; 
+  // Display email with masked characters
+  const maskEmail = (email) => {
+    if (!email) return 'your email';
+    const [username, domain] = email.split('@');
+    const maskedUsername = username.length > 2 
+      ? username.substring(0, 2) + '*'.repeat(username.length - 2)
+      : username;
+    return `${maskedUsername}@${domain}`;
+  };
+
+  const contactInfo = maskEmail(email); 
 
   return (
     <View style={styles.container}>

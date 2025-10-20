@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { authAPI } from '../../api/services';
 import { TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
@@ -22,12 +23,7 @@ const Login = () => {
       console.log('Validating input...');
       
       if (!email) {
-        Alert.alert('Error', 'Please enter your email');
-        return;
-      }
-      
-      if (!isValidEmail(email)) {
-        Alert.alert('Error', 'Please enter a valid email');
+        Alert.alert('Error', 'Please enter your email or phone number');
         return;
       }
       
@@ -36,23 +32,43 @@ const Login = () => {
         return;
       }
 
-      const data = { email: email, password: password };
-
       setLoading(true);
       
-      // Simulate API call - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const loginData = {
+        emailOrPhone: email,
+        password: password,
+        userType: 'RIDER' // Default to RIDER for this app
+      };
+
+      const response = await authAPI.login(loginData);
       
       setLoading(false);
       
-      // For demo purposes, navigate to dashboard
-      Alert.alert('Success', 'Login successful! Welcome back!');
-      router.replace('/Dashboard');
+      if (response.success) {
+        Alert.alert('Success', response.message || 'Login successful! Welcome back!');
+        
+        // Store user data in AsyncStorage if needed
+        if (response.data) {
+          // You might want to store user data and token here
+          console.log('User data:', response.data);
+        }
+        
+        router.replace('/(tabs)/Dashboard');
+      } else {
+        Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
+      }
       
     } catch (error) {
       setLoading(false);
-      console.log('Error during login process:', error);
-      Alert.alert('Error', 'Login failed. Please try again.');
+      console.error('Login error:', error);
+      
+      if (error.message) {
+        Alert.alert('Error', error.message);
+      } else if (error.error) {
+        Alert.alert('Error', error.error);
+      } else {
+        Alert.alert('Error', 'Login failed. Please try again.');
+      }
     }
   };
 
@@ -72,7 +88,7 @@ const Login = () => {
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="Enter email"
+            placeholder="Enter email or phone number"
             placeholderTextColor={ '#848484'}
             style={styles.input}
             keyboardType="email-address"

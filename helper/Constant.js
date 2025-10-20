@@ -1,5 +1,5 @@
 // API constants
-export const baseUrl = 'https://api.trihp.com/'; // Replace with actual API URL
+export const baseUrl = 'https://trihp-system-backend.onrender.com/api/trihp/v1'; // Replace with actual API URL
 
 // Vehicle types
 export const vehicleTypes = [
