@@ -41,7 +41,16 @@ export const authAPI = {
     }
   },
 
-  // Verify email with OTP
+  // Logout user
+  logout: async () => {
+    try {
+      const response = await api.post(Constant.logout);
+      return response.data;
+    } catch (error) {
+      console.error('Logout API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
   verifyEmail: async (emailData) => {
     try {
       // Convert object to URL-encoded string for form-encoded requests
@@ -62,35 +71,41 @@ export const authAPI = {
   },
 
   // Forgot password
-  forgotPassword: async (email) => {
+  forgotPassword: async (emailData) => {
     try {
-      const response = await api.post(Constant.forgotPassword, { email });
+      // Convert object to URL-encoded string for form-encoded requests
+      const formData = new URLSearchParams();
+      formData.append('email', emailData.email);
+      formData.append('userType', emailData.userType);
+
+      const response = await api.post(Constant.forgotPassword, formData.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
       return response.data;
     } catch (error) {
+      console.error('Forgot password API error:', error);
       throw error.response?.data || error.message;
     }
   },
 
   // Reset password
-  resetPassword: async (passwordData) => {
+  resetPassword: async (resetData) => {
     try {
-      const response = await api.post(Constant.resetPassword, passwordData, {
-        requiresAuth: true,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
+      // Convert object to URL-encoded string for form-encoded requests
+      const formData = new URLSearchParams();
+      formData.append('otp', resetData.otp);
+      formData.append('newPassword', resetData.newPassword);
 
-  // Logout user
-  logout: async () => {
-    try {
-      const response = await api.post(Constant.logout, {}, {
-        requiresAuth: true,
+      const response = await api.post(Constant.resetPassword, formData.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       });
       return response.data;
     } catch (error) {
+      console.error('Reset password API error:', error);
       throw error.response?.data || error.message;
     }
   },

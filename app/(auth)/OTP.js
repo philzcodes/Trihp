@@ -59,6 +59,7 @@ const OTP = () => {
   const email = params.email || '';
   const userType = params.userType || 'RIDER';
   const fromRegistration = params.fromRegistration === 'true';
+  const fromForgotPassword = params.fromForgotPassword === 'true';
   
   const { secondsLeft, resetTimer, isActive: timerActive } = useCountdown(INITIAL_TIMER);
 
@@ -122,6 +123,16 @@ const OTP = () => {
         if (fromRegistration) {
           // Navigate to login screen after successful registration
           router.replace('/(auth)/Login');
+        } else if (fromForgotPassword) {
+          // Navigate to reset password screen
+          router.push({
+            pathname: '/(auth)/ResetPassword',
+            params: {
+              email: email,
+              userType: userType,
+              otp: otpString
+            }
+          });
         } else {
           // Navigate to main app
           router.replace('/');

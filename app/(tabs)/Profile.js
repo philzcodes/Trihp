@@ -1,14 +1,17 @@
 import { AntDesign, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react'; // Import useState
 import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // Import Modal
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { authAPI } from '../../api/services';
+import useUserStore from '../../store/userStore';
 
 const AccountScreen = () => {
     const router = useRouter();
+    const { logout, token, getUserName } = useUserStore();
     // State to control the visibility of the sign-out modal
     const [isSignOutModalVisible, setSignOutModalVisible] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // --- Navigation Handlers (Kept the same for functionality) ---
 
@@ -33,12 +36,31 @@ const AccountScreen = () => {
     const confirmSignOut = async () => {
         setSignOutModalVisible(false); // Close modal immediately
         try {
-            await AsyncStorage.removeItem('userDetail');
-            router.replace('/splash');
+            setIsLoggingOut(true);
+            
+            // Call logout API if token exists
+            if (token) {
+                try {
+                    await authAPI.logout();
+                    console.log('Logout API call successful');
+                } catch (apiError) {
+                    console.error('Logout API error:', apiError);
+                    // Continue with local logout even if API fails
+                }
+            }
+            
+            // Clear local storage and state
+            await logout();
+            
+            // Navigate to login screen
+            router.replace('/(auth)/Login');
+            
         } catch (error) {
             console.error('Error during logout:', error);
             // Fallback navigation even on error
-            router.replace('/splash');
+            router.replace('/(auth)/Login');
+        } finally {
+            setIsLoggingOut(false);
         }
     };
 
@@ -54,7 +76,7 @@ const AccountScreen = () => {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>John Doe</Text>
+                <Text style={styles.headerTitle}>{getUserName() || 'Profile'}</Text>
                 <Image
                     source={{ uri: 'https://i.ibb.co/L5w2R3D/person.jpg' }}
                     style={styles.profileImage}
@@ -149,10 +171,13 @@ const AccountScreen = () => {
 
                         {/* Confirm Button (Yellow) */}
                         <TouchableOpacity 
-                            style={[modalStyles.button, modalStyles.confirmButton]} 
+                            style={[modalStyles.button, modalStyles.confirmButton, isLoggingOut && modalStyles.buttonDisabled]} 
                             onPress={confirmSignOut}
+                            disabled={isLoggingOut}
                         >
-                            <Text style={modalStyles.confirmButtonText}>Confirm Sign Out</Text>
+                            <Text style={modalStyles.confirmButtonText}>
+                                {isLoggingOut ? 'Signing Out...' : 'Confirm Sign Out'}
+                            </Text>
                         </TouchableOpacity>
 
                         {/* Cancel Button (White/Bordered) */}
@@ -223,6 +248,9 @@ const modalStyles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
 });
 

@@ -2,14 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { authAPI } from '../api/services';
 import { BackButton } from '../components';
 import { Colors, Fonts } from '../constants';
+import useUserStore from '../store/userStore';
 
 const Settings = () => {
   const router = useRouter();
+  const { logout, token } = useUserStore();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const settingsSections = [
     {
@@ -118,13 +122,39 @@ const Settings = () => {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            // Handle logout logic
-            router.replace('/login');
-          },
+          onPress: performLogout,
         },
       ]
     );
+  };
+
+  const performLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      
+      // Call logout API if token exists
+      if (token) {
+        try {
+          await authAPI.logout();
+          console.log('Logout API call successful');
+        } catch (apiError) {
+          console.error('Logout API error:', apiError);
+          // Continue with local logout even if API fails
+        }
+      }
+      
+      // Clear local storage and state
+      await logout();
+      
+      // Navigate to login screen
+      router.replace('/(auth)/Login');
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'An error occurred during logout. Please try again.');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const renderSettingItem = (item) => {
@@ -183,10 +213,16 @@ const Settings = () => {
           </View>
         ))}
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity 
+          style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]} 
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+        >
           <View style={styles.logoutContent}>
-            <Ionicons name="log-out" size={20} color={Colors.red} />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Ionicons name="log-out" size={20} color={isLoggingOut ? Colors.grey8 : Colors.red} />
+            <Text style={[styles.logoutText, isLoggingOut && styles.logoutTextDisabled]}>
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </Text>
           </View>
         </TouchableOpacity>
       </ScrollView>
@@ -273,5 +309,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.red,
     marginLeft: 15,
+  },
+  logoutButtonDisabled: {
+    opacity: 0.6,
+  },
+  logoutTextDisabled: {
+    color: Colors.grey8,
   },
 });

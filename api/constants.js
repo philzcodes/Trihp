@@ -8,8 +8,8 @@ const Constant = {
   login: 'auth/login',
   logout: 'auth/logout',
   verifyEmail: 'auth/verify-email',
-  forgotPassword: 'auth/forgot-password',
-  resetPassword: 'auth/reset-password',
+  forgotPassword: 'auth/password/forgot',
+  resetPassword: 'auth/password/reset',
   
   // User endpoints
   getProfile: 'user/profile',

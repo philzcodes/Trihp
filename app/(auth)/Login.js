@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { authAPI } from '../../api/services';
 import { TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
+import useUserStore from '../../store/userStore';
 
 const Login = () => {
   const router = useRouter();
+  const { setUserData } = useUserStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,14 +50,42 @@ const Login = () => {
       setLoading(false);
       
       if (response.success) {
-        Alert.alert('Success', response.message || 'Login successful! Welcome back!');
-        
-        // Store user data in AsyncStorage if needed
+        // Store user data and tokens in AsyncStorage
         if (response.data) {
-          // You might want to store user data and token here
-          console.log('User data:', response.data);
+          const userData = {
+            token: response.data.accessToken,
+            refreshToken: response.data.refreshToken,
+            user: {
+              id: response.data.id,
+              email: response.data.email,
+              firstName: response.data.firstName,
+              lastName: response.data.lastName,
+              middleName: response.data.middleName,
+              phoneNumber: response.data.phoneNumber,
+              userType: response.data.userType,
+              country: response.data.country,
+              gender: response.data.gender,
+              walletBalance: response.data.walletBalance,
+              isEmailVerified: response.data.isEmailVerified,
+              isPhoneVerified: response.data.isPhoneVerified,
+              profilePicture: response.data.profilePicture,
+              homeAddress: response.data.homeAddress,
+              workAddress: response.data.workAddress,
+            }
+          };
+          
+          try {
+            await AsyncStorage.setItem('userDetail', JSON.stringify(userData));
+            console.log('User data saved to AsyncStorage');
+            
+            // Update Zustand store
+            setUserData(userData);
+          } catch (storageError) {
+            console.error('Error saving user data:', storageError);
+          }
         }
         
+        Alert.alert('Success', response.message || 'Login successful! Welcome back!');
         router.replace('/(tabs)/Dashboard');
       } else {
         Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
@@ -131,7 +162,7 @@ const Login = () => {
         
         {/* Forgot Password Link */}
         <Pressable
-          onPress={() => router.push('/ForgotPassword')}
+          onPress={() => router.push('/(auth)/ForgotPassword')}
           style={styles.forgotPassword}
         >
           <Text style={styles.forgotPasswordText}>Forgot password?</Text>

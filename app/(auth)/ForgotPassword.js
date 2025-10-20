@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { authAPI } from '../../api/services';
 import { TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
@@ -39,25 +40,50 @@ const ResetPassword = () => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const forgotPasswordData = {
+        email: email,
+        userType: 'RIDER' // Default to RIDER for this app
+      };
+
+      console.log('Forgot password data:', forgotPasswordData);
+      const response = await authAPI.forgotPassword(forgotPasswordData);
+      console.log('Forgot password response:', response);
       
       setLoading(false);
       
-      Alert.alert(
-        'Success',
-        'Password reset instructions have been sent to your email address.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.push('/OTP'),
-          },
-        ]
-      );
+      if (response.success) {
+        Alert.alert(
+          'Success',
+          response.message || 'Password reset OTP has been sent to your email address.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.push({
+                pathname: '/(auth)/OTP',
+                params: {
+                  email: email,
+                  userType: 'RIDER',
+                  fromForgotPassword: true
+                }
+              }),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.message || 'Failed to send reset instructions. Please try again.');
+      }
       
     } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to send reset instructions. Please try again.');
+      console.error('Forgot password error:', error);
+      
+      if (error.message) {
+        Alert.alert('Error', error.message);
+      } else if (error.error) {
+        Alert.alert('Error', error.error);
+      } else {
+        Alert.alert('Error', 'Failed to send reset instructions. Please try again.');
+      }
     }
   };
 
