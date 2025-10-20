@@ -40,7 +40,9 @@ const Login = () => {
         userType: 'RIDER' // Default to RIDER for this app
       };
 
+      console.log('Login data being sent:', loginData);
       const response = await authAPI.login(loginData);
+      console.log('Login response:', response);
       
       setLoading(false);
       

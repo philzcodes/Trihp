@@ -26,6 +26,9 @@ export const authAPI = {
       formData.append('password', credentials.password);
       formData.append('userType', credentials.userType);
 
+      console.log('Login form data:', formData.toString());
+      console.log('Login URL:', `${Constant.baseUrl}/${Constant.login}`);
+
       const response = await api.post(Constant.login, formData.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -33,6 +36,7 @@ export const authAPI = {
       });
       return response.data;
     } catch (error) {
+      console.error('Login API error:', error);
       throw error.response?.data || error.message;
     }
   },
@@ -40,7 +44,13 @@ export const authAPI = {
   // Verify email with OTP
   verifyEmail: async (emailData) => {
     try {
-      const response = await api.post(Constant.verifyEmail, emailData, {
+      // Convert object to URL-encoded string for form-encoded requests
+      const formData = new URLSearchParams();
+      formData.append('email', emailData.email);
+      formData.append('otp', emailData.otp);
+      formData.append('userType', emailData.userType);
+
+      const response = await api.post(Constant.verifyEmail, formData.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
