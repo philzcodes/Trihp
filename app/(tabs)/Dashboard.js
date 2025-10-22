@@ -37,7 +37,7 @@ const Dashboard = () => {
     },
     {
       id: 2,
-      image: require('../../assets/images/banner.jpg'), // You can replace with different images
+      image: require('../../assets/images/banner2.jpg'), // You can replace with different images
       title: "Explore the City"
     },
     {
