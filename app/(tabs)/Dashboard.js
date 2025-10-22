@@ -1,19 +1,20 @@
 import Icon from '@expo/vector-icons/AntDesign';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +28,29 @@ import { Colors, Fonts } from '../../constants';
 const Dashboard = () => {
   const router = useRouter();
   
+  // Banner data - using the same image-based approach
+  const bannerData = [
+    {
+      id: 1,
+      image: require('../../assets/images/banner.jpg'),
+      title: "Get Out & About"
+    },
+    {
+      id: 2,
+      image: require('../../assets/images/banner.jpg'), // You can replace with different images
+      title: "Explore the City"
+    },
+    {
+      id: 3,
+      image: require('../../assets/images/banner.jpg'), // You can replace with different images
+      title: "Safe & Reliable"
+    }
+  ];
+
+  // Banner state
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const bannerRef = useRef(null);
+  const screenWidth = Dimensions.get('window').width;
   
   // Dummy data states
   const [recentRide, setRecentRide] = useState([
@@ -56,6 +80,23 @@ const Dashboard = () => {
   
   const [loading, setLoading] = useState(false);
   const [originLocation, setOriginLocation] = useState("Your Current Location");
+
+  // Banner functions
+  const handleBannerScroll = (event) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / screenWidth);
+    setCurrentBannerIndex(index);
+  };
+
+  const renderBannerItem = ({ item }) => (
+    <View style={styles.bannerContainer}>
+      <Image 
+        source={item.image} 
+        resizeMode="cover" 
+        style={styles.bannerImage} 
+      />
+    </View>
+  );
 
   // Direct search navigation
   const handleSearchPress = () => {
@@ -180,13 +221,32 @@ const Dashboard = () => {
               showsVerticalScrollIndicator={false} 
               contentContainerStyle={styles.scrollView}
             >
-              {/* Banner */}
-              <View style={styles.bannerContainer}>
-                <Image 
-                  source={require('../../assets/images/banner.jpg')} 
-                  resizeMode="cover" 
-                  style={styles.bannerImage} 
+              {/* Swipable Banner */}
+              <View style={styles.bannerWrapper}>
+                <FlatList
+                  ref={bannerRef}
+                  data={bannerData}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={handleBannerScroll}
+                  scrollEventThrottle={16}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderBannerItem}
                 />
+                
+                {/* Banner Indicators */}
+                <View style={styles.bannerIndicators}>
+                  {bannerData.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.indicator,
+                        index === currentBannerIndex && styles.activeIndicator
+                      ]}
+                    />
+                  ))}
+                </View>
               </View>
 
               {/* Search Input */}
@@ -236,14 +296,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bannerContainer: {
+  bannerWrapper: {
     marginVertical: 20,
+    alignItems: 'center',
+  },
+  bannerContainer: {
     alignItems: 'center',
   },
   bannerImage: {
     height: 125,
-    width: '100%',
+    width: Dimensions.get('window').width - 40, // Full width minus padding
     borderRadius: 20,
+  },
+  bannerIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+    gap: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.whiteColor,
+    opacity: 0.3,
+  },
+  activeIndicator: {
+    backgroundColor: Colors.yellow,
+    opacity: 1,
+    width: 20, // Wider active indicator
+    borderRadius: 10, // Adjust border radius for wider shape
   },
   historyList: {
     padding: 10,
