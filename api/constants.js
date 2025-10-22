@@ -12,10 +12,25 @@ const Constant = {
   resetPassword: 'auth/password/reset',
   
   // User endpoints
-  getProfile: 'user/profile',
-  updateProfile: 'user/update-profile',
+  getProfile: 'users/profile',
+  updateProfile: 'users/profile',
   
-  // Ride endpoints
+  // Rider endpoints (using available user endpoints for now)
+  getRiderProfile: 'users/profile',
+  updateRiderProfile: 'users/profile',
+  addHomeAddress: 'riders/home-address', // Will need backend implementation
+  addWorkAddress: 'riders/work-address', // Will need backend implementation
+  getRiderWallet: 'riders/wallet', // Will need backend implementation
+  addToWallet: 'riders/wallet/add', // Will need backend implementation
+  deductFromWallet: 'riders/wallet/deduct', // Will need backend implementation
+  
+  // Ride Request endpoints
+  createRideRequest: 'ride-request',
+  getRideRequest: 'ride-request',
+  updateRideRequest: 'ride-request',
+  deleteRideRequest: 'ride-request',
+  
+  // Ride endpoints (legacy - keeping for compatibility)
   createRide: 'ride/create',
   getRide: 'ride/get',
   getAllRide: 'ride/all',

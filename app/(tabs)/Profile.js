@@ -1,17 +1,66 @@
-import { AntDesign, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react'; // Import useState
-import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // Import Modal
+import React, { useEffect, useState } from 'react'; // Import useState and useEffect
+import { Image, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // Import Modal, RefreshControl, Alert
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { authAPI } from '../../api/services';
+import { authAPI, riderAPI } from '../../api/services';
 import useUserStore from '../../store/userStore';
 
 const AccountScreen = () => {
     const router = useRouter();
     const { logout, token, getUserName } = useUserStore();
+    
     // State to control the visibility of the sign-out modal
     const [isSignOutModalVisible, setSignOutModalVisible] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    
+    // State for rider profile data
+    const [riderProfile, setRiderProfile] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [error, setError] = useState(null);
+
+    // --- Data Fetching Functions ---
+    
+    const fetchRiderProfile = async () => {
+        try {
+            setError(null);
+            const profile = await riderAPI.getRiderProfile();
+            // Backend returns user data with rider relation
+            setRiderProfile({
+                firstName: profile.data?.firstName || profile.firstName || 'User',
+                lastName: profile.data?.lastName || profile.lastName || '',
+                homeAddress: profile.data?.rider?.homeAddress || profile.rider?.homeAddress || null,
+                workAddress: profile.data?.rider?.workAddress || profile.rider?.workAddress || null,
+                walletBalance: profile.data?.rider?.walletBalance || profile.rider?.walletBalance || 0,
+            });
+        } catch (err) {
+            console.error('Error fetching rider profile:', err);
+            // Use fallback data from userStore if API fails
+            setRiderProfile({
+                firstName: getUserName()?.split(' ')[0] || 'User',
+                lastName: getUserName()?.split(' ')[1] || '',
+                homeAddress: null,
+                workAddress: null,
+                walletBalance: 0,
+            });
+            // Don't show error alert for now since backend is not fully implemented
+            console.warn('Using fallback profile data');
+        } finally {
+            setIsLoading(false);
+            setIsRefreshing(false);
+        }
+    };
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        fetchRiderProfile();
+    };
+
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchRiderProfile();
+    }, []);
 
     // --- Navigation Handlers (Kept the same for functionality) ---
 
@@ -76,14 +125,46 @@ const AccountScreen = () => {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{getUserName() || 'Profile'}</Text>
+                <Text style={styles.headerTitle}>
+                    {riderProfile ? `${riderProfile.firstName} ${riderProfile.lastName}` : (getUserName() || 'Profile')}
+                </Text>
                 <Image
                     source={{ uri: 'https://i.ibb.co/L5w2R3D/person.jpg' }}
                     style={styles.profileImage}
                 />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+            ) : (
+                <ScrollView 
+                    contentContainerStyle={styles.scrollViewContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#FFFFFF"
+                            colors={["#FFD700"]}
+                        />
+                    }
+                >
+                {/* Wallet Balance Section */}
+                {riderProfile && (
+                    <View style={styles.walletSection}>
+                        <View style={styles.walletCard}>
+                            <MaterialIcons name="account-balance-wallet" size={24} color="#FFD700" />
+                            <View style={styles.walletInfo}>
+                                <Text style={styles.walletLabel}>Trihp Wallet</Text>
+                                <Text style={styles.walletBalance}>
+                                    ${riderProfile.walletBalance ? riderProfile.walletBalance.toFixed(2) : '0.00'}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 <View style={styles.section}>
                     {/* ... Your menu items ... */}
                     <TouchableOpacity style={styles.menuItem} onPress={navigateToProfile}>
@@ -96,7 +177,9 @@ const AccountScreen = () => {
                         <Ionicons name="home-outline" size={24} color="#FFFFFF" style={styles.menuIcon} />
                         <View style={styles.menuItemTextWrapper}>
                             <Text style={styles.menuText}>Add Home</Text>
-                            <Text style={styles.menuSubText}>15 Ozumba Mbadiwe Avn, Victoria Island</Text>
+                            <Text style={styles.menuSubText}>
+                                {riderProfile?.homeAddress || 'Tap to add home address'}
+                            </Text>
                         </View>
                         <MaterialIcons name="keyboard-arrow-right" size={24} color="#7E7E7E" style={styles.arrowIcon} />
                     </TouchableOpacity>
@@ -105,7 +188,9 @@ const AccountScreen = () => {
                         <Ionicons name="business-outline" size={24} color="#FFFFFF" style={styles.menuIcon} />
                         <View style={styles.menuItemTextWrapper}>
                             <Text style={styles.menuText}>Add Work</Text>
-                            <Text style={styles.menuSubText}>15 Ozumba Mbadiwe Avn, Victoria Island</Text>
+                            <Text style={styles.menuSubText}>
+                                {riderProfile?.workAddress || 'Tap to add work address'}
+                            </Text>
                         </View>
                         <MaterialIcons name="keyboard-arrow-right" size={24} color="#7E7E7E" style={styles.arrowIcon} />
                     </TouchableOpacity>
@@ -129,7 +214,7 @@ const AccountScreen = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.menuItem} onPress={navigateToReferAFriend}>
-                        <AntDesign name="sharealt" size={22} color="#FFFFFF" style={styles.menuIcon} />
+                        <MaterialIcons name="share" size={22} color="#FFFFFF" style={styles.menuIcon} />
                         <Text style={styles.menuText}>Refer a friend</Text>
                         <MaterialIcons name="keyboard-arrow-right" size={24} color="#7E7E7E" style={styles.arrowIcon} />
                     </TouchableOpacity>
@@ -154,7 +239,8 @@ const AccountScreen = () => {
                 <TouchableOpacity style={styles.signOutButton} onPress={promptSignOut}>
                     <Text style={styles.signOutText}>Sign out</Text>
                 </TouchableOpacity>
-            </ScrollView>
+                </ScrollView>
+            )}
             
             {/* --- Sign Out Confirmation Modal --- */}
             <Modal
@@ -288,6 +374,47 @@ const styles = StyleSheet.create({
     },
     scrollViewContent: {
         paddingBottom: 20,
+    },
+    walletSection: {
+        paddingHorizontal: 16,
+        paddingVertical: 15,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#2C2C2C',
+    },
+    walletCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1A1A1A',
+        padding: 15,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#2C2C2C',
+    },
+    walletInfo: {
+        marginLeft: 15,
+        flex: 1,
+    },
+    walletLabel: {
+        color: '#A0A0A0',
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    walletBalance: {
+        color: '#FFD700',
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 50,
+    },
+    loadingText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '500',
     },
     section: {
         // No top margin needed since the first item borders the header line

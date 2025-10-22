@@ -1,24 +1,76 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// import { useNavigation } from '@react-navigation/native'; // Uncomment if using React Navigation
+import { userAPI } from '../../api/services';
+import useUserStore from '../../store/userStore';
 
 const AccountInfoScreen = () => {
-    // const navigation = useNavigation(); // Uncomment if using React Navigation
+    const { getUserName } = useUserStore();
+    
+    // State for user profile data
+    const [userProfile, setUserProfile] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [error, setError] = useState(null);
 
-    // Hardcoded data to match the image
-    const userData = {
-        name: 'User Name',
-        phoneNumber: '+123-123-1234',
-        email: 'username@gmail.com',
-        profileImageUri: 'https://i.ibb.co/L5w2R3D/person.jpg', // Replace with a real user image link
+    // --- Data Fetching Functions ---
+    
+    const fetchUserProfile = async () => {
+        try {
+            setError(null);
+            const profile = await userAPI.getProfile();
+            // Handle different response structures
+            const profileData = profile.data || profile;
+            setUserProfile({
+                firstName: profileData.firstName || profileData.first_name || '',
+                lastName: profileData.lastName || profileData.last_name || '',
+                email: profileData.email || '',
+                phoneNumber: profileData.phoneNumber || profileData.phone_number || '',
+                profileImageUri: profileData.profilePicture || profileData.profile_picture || 'https://i.ibb.co/L5w2R3D/person.jpg',
+                isEmailVerified: profileData.isEmailVerified || profileData.is_email_verified || false,
+                isPhoneVerified: profileData.isPhoneVerified || profileData.is_phone_verified || false,
+            });
+        } catch (err) {
+            console.error('Error fetching user profile:', err);
+            // Use fallback data from userStore if API fails
+            const userName = getUserName() || 'User Name';
+            setUserProfile({
+                firstName: userName.split(' ')[0] || 'User',
+                lastName: userName.split(' ')[1] || '',
+                email: 'user@example.com',
+                phoneNumber: '+123-456-7890',
+                profileImageUri: 'https://i.ibb.co/L5w2R3D/person.jpg',
+                isEmailVerified: false,
+                isPhoneVerified: false,
+            });
+            console.warn('Using fallback profile data - API endpoint not available yet');
+        } finally {
+            setIsLoading(false);
+            setIsRefreshing(false);
+        }
     };
 
-    const handleEdit = (field) => {
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        fetchUserProfile();
+    };
+
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchUserProfile();
+    }, []);
+
+    const handleEdit = async (field) => {
         console.log(`Edit button pressed for: ${field}`);
-        // In a real app, this would navigate to a dedicated edit screen or open a modal.
+        Alert.alert(
+            'Edit Feature',
+            `Edit ${field} functionality will be implemented soon.`,
+            [{ text: 'OK' }]
+        );
+        // TODO: Implement actual edit functionality
+        // This could navigate to edit screens or open modals
     };
 
     return (
@@ -34,12 +86,27 @@ const AccountInfoScreen = () => {
                 <Text style={styles.headerTitle}>Account Info</Text>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+            ) : (
+                <ScrollView 
+                    contentContainerStyle={styles.scrollViewContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#FFFFFF"
+                            colors={["#FFD700"]}
+                        />
+                    }
+                >
                 {/* Profile Picture Section */}
                 <View style={styles.profileSection}>
                     <View style={styles.profileImageContainer}>
                         <Image
-                            source={{ uri: userData.profileImageUri }}
+                            source={{ uri: userProfile?.profileImageUri || 'https://i.ibb.co/L5w2R3D/person.jpg' }}
                             style={styles.profileImage}
                         />
                         {/* Camera/Edit Icon Button */}
@@ -55,7 +122,9 @@ const AccountInfoScreen = () => {
                 <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Name</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailValue}>{userData.name}</Text>
+                        <Text style={styles.detailValue}>
+                            {userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : 'Loading...'}
+                        </Text>
                         <TouchableOpacity onPress={() => handleEdit('Name')}>
                             <MaterialIcons name="edit" size={20} color="#7E7E7E" />
                         </TouchableOpacity>
@@ -67,8 +136,10 @@ const AccountInfoScreen = () => {
                 <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Phone Number</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailValue}>{userData.phoneNumber}</Text>
-                        <Ionicons name="checkmark-circle" size={20} color="#3CB371" style={styles.verifiedIcon} />
+                        <Text style={styles.detailValue}>{userProfile?.phoneNumber || 'Loading...'}</Text>
+                        {userProfile?.isPhoneVerified && (
+                            <Ionicons name="checkmark-circle" size={20} color="#3CB371" style={styles.verifiedIcon} />
+                        )}
                         <TouchableOpacity onPress={() => handleEdit('Phone Number')}>
                             <MaterialIcons name="edit" size={20} color="#7E7E7E" />
                         </TouchableOpacity>
@@ -80,8 +151,10 @@ const AccountInfoScreen = () => {
                 <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Email</Text>
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailValue}>{userData.email}</Text>
-                        <Ionicons name="checkmark-circle" size={20} color="#3CB371" style={styles.verifiedIcon} />
+                        <Text style={styles.detailValue}>{userProfile?.email || 'Loading...'}</Text>
+                        {userProfile?.isEmailVerified && (
+                            <Ionicons name="checkmark-circle" size={20} color="#3CB371" style={styles.verifiedIcon} />
+                        )}
                         <TouchableOpacity onPress={() => handleEdit('Email')}>
                             <MaterialIcons name="edit" size={20} color="#7E7E7E" />
                         </TouchableOpacity>
@@ -89,7 +162,8 @@ const AccountInfoScreen = () => {
                 </View>
                 <View style={styles.separator} />
                 
-            </ScrollView>
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 };
@@ -117,6 +191,17 @@ const styles = StyleSheet.create({
     },
     scrollViewContent: {
         flexGrow: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 50,
+    },
+    loadingText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '500',
     },
     
     // --- Profile Section Styles ---
