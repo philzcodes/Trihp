@@ -10,6 +10,7 @@ const Constant = {
   verifyEmail: 'auth/verify-email',
   forgotPassword: 'auth/password/forgot',
   resetPassword: 'auth/password/reset',
+  changePassword: 'auth/password/change',
   
   // User endpoints
   getProfile: 'users/profile',

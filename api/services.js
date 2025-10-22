@@ -109,6 +109,22 @@ export const authAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Change password
+  changePassword: async (passwordData) => {
+    try {
+      const response = await api.post(Constant.changePassword, passwordData, {
+        requiresAuth: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Change password API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 // User API Services
