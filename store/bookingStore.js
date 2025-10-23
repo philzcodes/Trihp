@@ -64,6 +64,13 @@ const useBookingStore = create((set, get) => ({
   createRideRequest: async (rideData) => {
     set({ loading: true, error: null });
     try {
+      console.log('BookingStore: rideRequestAPI available:', !!rideRequestAPI);
+      console.log('BookingStore: createRideRequest method available:', !!rideRequestAPI?.createRideRequest);
+      
+      if (!rideRequestAPI || !rideRequestAPI.createRideRequest) {
+        throw new Error('Ride request API is not available');
+      }
+      
       const response = await rideRequestAPI.createRideRequest(rideData);
       set({ 
         currentRide: response,
@@ -72,6 +79,7 @@ const useBookingStore = create((set, get) => ({
       });
       return response;
     } catch (error) {
+      console.error('BookingStore: Error in createRideRequest:', error);
       set({ error: error.message || 'Failed to create ride request', loading: false });
       throw error;
     }
@@ -147,6 +155,23 @@ const useBookingStore = create((set, get) => ({
       return response;
     } catch (error) {
       set({ error: error.message || 'Failed to get active ride', loading: false });
+      throw error;
+    }
+  },
+
+  updateRideRequest: async (rideId, updateData) => {
+    set({ loading: true, error: null });
+    try {
+      console.log('BookingStore: Updating ride request:', rideId, updateData);
+      const response = await rideRequestAPI.updateRideRequest(rideId, updateData);
+      set({ 
+        currentRide: response,
+        loading: false 
+      });
+      return response;
+    } catch (error) {
+      console.error('BookingStore: Error updating ride request:', error);
+      set({ error: error.message || 'Failed to update ride request', loading: false });
       throw error;
     }
   },

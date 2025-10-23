@@ -15,6 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { clearRequestQueue, getQueueStats } from '../../api/client';
+import rideRequestAPI from '../../api/rideRequestAPI';
 import { MapComponent } from '../../components';
 import PricingHelper from '../../helper/pricingHelper';
 import useBookingStore from '../../store/bookingStore';
@@ -203,7 +204,7 @@ const RideSelection = () => {
   // Initialize ride data from params or store
   useEffect(() => {
     console.log('RideSelection useEffect triggered');
-    const initializeRideData = () => {
+    const initializeRideData = async () => {
       try {
         console.log('RideSelection - Initializing with params:', {
           rideId: params.rideId,
@@ -215,15 +216,41 @@ const RideSelection = () => {
           totalFare: params.totalFare,
         });
         
-        // Get ride data from params or current ride in store
-        const rideInfo = currentRide || {
-          id: params.rideId || 'temp-ride-id',
-          pickupAddress: params.pickupAddress || 'Pickup Location',
-          dropOffAddress: params.destinationAddress || 'Destination',
-          estimatedDistance: parseFloat(params.estimatedDistance || params.distance || '5'),
-          estimatedDuration: parseFloat(params.estimatedDuration || '15'),
-          totalFare: parseFloat(params.totalFare || '100'),
-        };
+        let rideInfo = currentRide;
+        
+        // If no current ride in store, fetch from database using rideId
+        if (!rideInfo && params.rideId) {
+          console.log('Fetching ride data from database for rideId:', params.rideId);
+          try {
+            rideInfo = await rideRequestAPI.getRideRequest(params.rideId);
+            console.log('Fetched ride data from database:', rideInfo);
+            // Set the fetched ride in the store
+            setCurrentRide(rideInfo);
+          } catch (error) {
+            console.error('Error fetching ride data:', error);
+            // Fallback to creating from params
+            rideInfo = {
+              id: params.rideId || 'temp-ride-id',
+              pickupAddress: params.pickupAddress || 'Pickup Location',
+              dropOffAddress: params.destinationAddress || 'Destination',
+              estimatedDistance: parseFloat(params.estimatedDistance || params.distance || '5'),
+              estimatedDuration: parseFloat(params.estimatedDuration || '15'),
+              totalFare: parseFloat(params.totalFare || '100'),
+            };
+          }
+        }
+        
+        // If still no ride info, create from params
+        if (!rideInfo) {
+          rideInfo = {
+            id: params.rideId || 'temp-ride-id',
+            pickupAddress: params.pickupAddress || 'Pickup Location',
+            dropOffAddress: params.destinationAddress || 'Destination',
+            estimatedDistance: parseFloat(params.estimatedDistance || params.distance || '5'),
+            estimatedDuration: parseFloat(params.estimatedDuration || '15'),
+            totalFare: parseFloat(params.totalFare || '100'),
+          };
+        }
 
         console.log('Ride info created:', rideInfo);
 
@@ -260,7 +287,7 @@ const RideSelection = () => {
     }, 2000);
     
     return () => clearTimeout(timeoutId);
-  }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.distance, params.estimatedDuration, params.totalFare, currentRide?.id]);
+  }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.distance, params.estimatedDuration, params.totalFare, currentRide?.id, setCurrentRide]);
 
   // Calculate pricing when coordinates are ready
   useEffect(() => {
@@ -377,6 +404,8 @@ const RideSelection = () => {
   // Handle vehicle selection
   const handleVehicleSelection = useCallback(async (vehicle) => {
     try {
+      console.log('Vehicle selected:', vehicle);
+      console.log('Current ride:', currentRide);
       setSelectedVehicle(vehicle);
       
       if (currentRide && currentRide.id) {
@@ -384,8 +413,7 @@ const RideSelection = () => {
         const pricing = vehiclePricing[vehicle.type];
         const price = calculatePrice(vehicle);
         
-        // Update the ride request with selected vehicle type and pricing
-        await updateRideRequest(currentRide.id, {
+        const updateData = {
           vehicleType: vehicle.type,
           totalFare: price,
           ...(pricing && !pricing.error && {
@@ -396,7 +424,15 @@ const RideSelection = () => {
             tax: pricing.tax,
             bookingFee: pricing.bookingFee,
           }),
-        });
+        };
+        
+        console.log('Updating ride request with data:', updateData);
+        
+        // Update the ride request with selected vehicle type and pricing
+        const response = await updateRideRequest(currentRide.id, updateData);
+        console.log('Ride request updated successfully:', response);
+      } else {
+        console.log('No current ride or ride ID found');
       }
     } catch (error) {
       console.error('Error updating ride request:', error);

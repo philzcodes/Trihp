@@ -85,7 +85,8 @@ const api = axios.create({
 // Wrapper function to use request queue
 const queuedRequest = async (config) => {
   return requestQueue.addRequest(async () => {
-    return await api(config);
+    // Use the axios instance to make the request
+    return await api.request(config);
   });
 };
 

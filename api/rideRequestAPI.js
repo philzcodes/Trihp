@@ -1,5 +1,5 @@
-import api from '../api/client';
-import Constant from '../constants';
+import api from './client';
+import Constant from './constants';
 
 // Ride Request API Service
 export const rideRequestAPI = {
@@ -7,6 +7,14 @@ export const rideRequestAPI = {
   createRideRequest: async (rideData) => {
     try {
       console.log('Creating ride request:', rideData);
+      console.log('rideRequestAPI: api object available:', !!api);
+      console.log('rideRequestAPI: api.post method available:', !!api?.post);
+      console.log('rideRequestAPI: Constant.createRideRequest:', Constant.createRideRequest);
+      
+      if (!api || !api.post) {
+        throw new Error('API client is not properly initialized');
+      }
+      
       const response = await api.post(Constant.createRideRequest, rideData);
       return response.data;
     } catch (error) {

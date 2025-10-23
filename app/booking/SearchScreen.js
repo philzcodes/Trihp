@@ -19,6 +19,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getCurrentToken, isAuthenticated } from '../../api/client';
+import rideRequestAPI from '../../api/rideRequestAPI';
 import { MapComponent } from '../../components';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
@@ -43,10 +44,12 @@ const SearchScreen = ({ route }) => {
   const [focusedInput, setFocusedInput] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isReturningFromRide, setIsReturningFromRide] = useState(false);
+  const [isCreatingRide, setIsCreatingRide] = useState(false);
+  const [rideRequestCreated, setRideRequestCreated] = useState(false);
 
   // Zustand stores
   const { createRideRequest, setCurrentRide } = useBookingStore();
-  const { userData, getUserName, getUserPhone } = useUserStore();
+  const { userData, getUserName, getUserPhone, fetchUser } = useUserStore();
 
   // Mock recent locations - matching the image
   const recentLocations = [
@@ -64,6 +67,7 @@ const SearchScreen = ({ route }) => {
 
   useEffect(() => {
     getLocation();
+    fetchUser(); // Fetch user data from AsyncStorage
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboardVisible(true);
     });
@@ -306,8 +310,19 @@ const SearchScreen = ({ route }) => {
     }
 
     if (!userData) {
-      Alert.alert('Authentication Required', 'Please log in to create a ride request');
-      return;
+      console.log('No user data found, attempting to fetch...');
+      try {
+        const fetchedUserData = await fetchUser();
+        if (!fetchedUserData) {
+          Alert.alert('Authentication Required', 'Please log in to create a ride request');
+          return;
+        }
+        console.log('User data fetched successfully:', !!fetchedUserData);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        Alert.alert('Authentication Required', 'Please log in to create a ride request');
+        return;
+      }
     }
 
     // Check authentication status
@@ -353,10 +368,8 @@ const SearchScreen = ({ route }) => {
 
       // Calculate distance and estimated duration
       const distance = haversineDistance(
-        originCoordinates.latitude,
-        originCoordinates.longitude,
-        destinationCoordinates.latitude,
-        destinationCoordinates.longitude
+        { latitude: originCoordinates.latitude, longitude: originCoordinates.longitude },
+        { latitude: destinationCoordinates.latitude, longitude: destinationCoordinates.longitude }
       );
 
       console.log('Distance calculation:', {
@@ -365,6 +378,14 @@ const SearchScreen = ({ route }) => {
         calculatedDistance: distance,
         distanceInKM: distance,
       });
+
+      // Validate distance calculation
+      if (isNaN(distance) || distance <= 0) {
+        console.error('Invalid distance calculation:', distance);
+        Alert.alert('Error', 'Unable to calculate distance. Please try selecting different locations.');
+        setLoading(false);
+        return;
+      }
 
       // Mock pricing calculation (you can replace this with actual pricing logic)
       const baseFare = 50; // Base fare
@@ -406,38 +427,83 @@ const SearchScreen = ({ route }) => {
         isScheduled: false,
       };
 
-      console.log('Creating ride request with data:', rideRequestData);
-
-      // Create the ride request
-      const response = await createRideRequest(rideRequestData);
+      // Create the ride request directly using the API
       
-      console.log('Ride request created:', response);
+      if (!rideRequestAPI || !rideRequestAPI.createRideRequest) {
+        throw new Error('Ride request API is not available');
+      }
+      
+      const response = await rideRequestAPI.createRideRequest(rideRequestData);
+      
+      console.log('Ride request created successfully:', response);
 
-      console.log('Navigating to RideSelection with params:', {
-        rideId: response.id,
-        pickupAddress: originLocation,
-        destinationAddress: destinationLocation,
-        estimatedDistance: distance.toString(),
-        estimatedDuration: estimatedDuration.toString(),
-        totalFare: Math.round(totalFare).toString(),
-      });
+      // Set the current ride in the store
+      setCurrentRide(response);
 
-      // Navigate to RideSelection with ride data
-      router.push({
-        pathname: '/booking/RideSelection',
-        params: {
+      // Only navigate if the ride request was created successfully
+      if (response && response.id) {
+        console.log('Navigating to RideSelection with params:', {
           rideId: response.id,
           pickupAddress: originLocation,
           destinationAddress: destinationLocation,
           estimatedDistance: distance.toString(),
           estimatedDuration: estimatedDuration.toString(),
           totalFare: Math.round(totalFare).toString(),
-        }
-      });
+        });
+
+        // Navigate to RideSelection with ride data
+        router.push({
+          pathname: '/booking/RideSelection',
+          params: {
+            rideId: response.id,
+            pickupAddress: originLocation,
+            destinationAddress: destinationLocation,
+            estimatedDistance: distance.toString(),
+            estimatedDuration: estimatedDuration.toString(),
+            totalFare: Math.round(totalFare).toString(),
+          }
+        });
+      } else {
+        throw new Error('Ride request creation failed - no response ID received');
+      }
 
     } catch (error) {
       console.error('Error creating ride request:', error);
-      Alert.alert('Error', 'Failed to create ride request. Please try again.');
+      
+      // Reset the creating ride state
+      setIsCreatingRide(false);
+      
+      // Check if it's an authentication error
+      if (error?.statusCode === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('Invalid or Expired Token')) {
+        Alert.alert(
+          'Authentication Required', 
+          'Your session has expired. Please log in again to create a ride request.',
+          [
+            { text: 'OK', onPress: () => {
+              // Navigate to login screen or clear user data
+              console.log('User needs to re-authenticate');
+            }}
+          ]
+        );
+      } else if (error?.message?.includes('Ride request API is not available')) {
+        Alert.alert(
+          'Service Error', 
+          'The ride request service is temporarily unavailable. Please try again later.',
+          [{ text: 'OK' }]
+        );
+      } else if (error?.message?.includes('no response ID received')) {
+        Alert.alert(
+          'Request Failed', 
+          'Failed to create ride request. Please check your connection and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error', 
+          'Failed to create ride request. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -445,6 +511,34 @@ const SearchScreen = ({ route }) => {
 
   const showRecentLocations = !originShowList && !dropShowList && !keyboardVisible;
   const canCreateRide = originLocation && destinationLocation && originCoordinates && destinationCoordinates;
+
+  // Auto-create ride request when both locations are selected
+  useEffect(() => {
+    if (canCreateRide && !loading && !isCreatingRide && !rideRequestCreated) {
+      console.log('Both locations selected, auto-creating ride request...');
+      // Add a small delay to ensure user has finished typing
+      const timer = setTimeout(async () => {
+        try {
+          setIsCreatingRide(true);
+          await handleCreateRideRequest();
+          setRideRequestCreated(true); // Mark that a ride request has been created
+          console.log('Ride request created successfully, navigation handled by handleCreateRideRequest');
+        } catch (error) {
+          console.error('Auto-creation failed:', error);
+          // Don't navigate if creation fails - error handling is done in handleCreateRideRequest
+        } finally {
+          setIsCreatingRide(false);
+        }
+      }, 1000); // 1 second delay
+      
+      return () => clearTimeout(timer);
+    }
+  }, [canCreateRide, loading, isCreatingRide, rideRequestCreated]);
+
+  // Reset ride request created state when locations change
+  useEffect(() => {
+    setRideRequestCreated(false);
+  }, [originLocation, destinationLocation]);
 
   return (
     <KeyboardAvoidingView
@@ -645,17 +739,6 @@ const SearchScreen = ({ route }) => {
         )}
         </View>
 
-        {/* Floating Action Button */}
-        {canCreateRide && (
-          <TouchableOpacity
-            style={styles.floatingActionButton}
-            onPress={handleCreateRideRequest}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.fabText}>Continue</Text>
-            <Icon name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
 
         <Loader modalVisible={loading} setModalVisible={setLoading} />
       </View>
@@ -822,33 +905,6 @@ const styles = StyleSheet.create({
     height: 12,
     backgroundColor: '#FF3B30',
     marginTop: -1,
-  },
-  floatingActionButton: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: '#007AFF',
-    borderRadius: 25,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    marginRight: 8,
   },
 });
 
