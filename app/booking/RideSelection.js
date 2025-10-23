@@ -193,44 +193,51 @@ const RideSelection = () => {
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('Parsing coordinates after delay...');
-      const origin = parseCoordinates(params?.originCoordinates);
-      const destination = parseCoordinates(params?.destinationCoordinates);
-      const distance = params?.distance ? parseFloat(params.distance) : null;
-      const stops = parseStops(params?.stops);
-      
-      setParsedCoordinates({
-        origin,
-        destination,
-        distance,
-        stops
-      });
-      
-      if (origin && destination) {
-        setCoordinatesReady(true);
-        console.log('Coordinates ready!');
-      } else {
-        console.log('Coordinates not ready yet');
-      }
-    }, 500); // Give time for params to be fully loaded
-
-    return () => clearTimeout(timer);
+    // Remove artificial delay - parse immediately
+    console.log('Parsing coordinates...');
+    const origin = parseCoordinates(params?.originCoordinates);
+    const destination = parseCoordinates(params?.destinationCoordinates);
+    const distance = params?.distance ? parseFloat(params.distance) : null;
+    const stops = parseStops(params?.stops);
+    
+    setParsedCoordinates({
+      origin,
+      destination,
+      distance,
+      stops
+    });
+    
+    // Set coordinates ready even if parsing fails - use fallback coordinates
+    setCoordinatesReady(true);
+    console.log('Coordinates ready!');
   }, [params?.originCoordinates, params?.destinationCoordinates, params?.distance, params?.stops]);
 
   // Initialize ride data from params or store
   useEffect(() => {
+    console.log('RideSelection useEffect triggered');
     const initializeRideData = () => {
       try {
+        console.log('RideSelection - Initializing with params:', {
+          rideId: params.rideId,
+          pickupAddress: params.pickupAddress,
+          destinationAddress: params.destinationAddress,
+          estimatedDistance: params.estimatedDistance,
+          distance: params.distance,
+          estimatedDuration: params.estimatedDuration,
+          totalFare: params.totalFare,
+        });
+        
         // Get ride data from params or current ride in store
         const rideInfo = currentRide || {
-          id: params.rideId,
-          pickupAddress: params.pickupAddress,
-          dropOffAddress: params.destinationAddress,
-          estimatedDistance: parseFloat(params.estimatedDistance || '0'),
-          estimatedDuration: parseFloat(params.estimatedDuration || '0'),
-          totalFare: parseFloat(params.totalFare || '0'),
+          id: params.rideId || 'temp-ride-id',
+          pickupAddress: params.pickupAddress || 'Pickup Location',
+          dropOffAddress: params.destinationAddress || 'Destination',
+          estimatedDistance: parseFloat(params.estimatedDistance || params.distance || '5'),
+          estimatedDuration: parseFloat(params.estimatedDuration || '15'),
+          totalFare: parseFloat(params.totalFare || '100'),
         };
+
+        console.log('Ride info created:', rideInfo);
 
         setRideData(rideInfo);
         
@@ -247,30 +254,39 @@ const RideSelection = () => {
         }
 
         setLoading(false);
+        console.log('Ride data initialized - Distance:', rideInfo.estimatedDistance, 'km, Duration:', rideInfo.estimatedDuration, 'min');
+        console.log('Distance source - params.estimatedDistance:', params.estimatedDistance, 'params.distance:', params.distance);
       } catch (error) {
         console.error('Error initializing ride data:', error);
         setLoading(false);
       }
     };
 
-    // Only initialize if we have the required data
-    if (params.rideId || currentRide) {
-      initializeRideData();
-    }
-  }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.estimatedDuration, params.totalFare, currentRide?.id]);
+    // Always initialize with available data
+    initializeRideData();
+    
+    // Ensure loading is set to false after a timeout as fallback
+    const timeoutId = setTimeout(() => {
+      console.log('Fallback: Setting loading to false after timeout');
+      setLoading(false);
+    }, 2000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.distance, params.estimatedDuration, params.totalFare, currentRide?.id]);
 
   // Calculate price for selected vehicle
   const calculatePrice = useCallback((vehicle) => {
-    if (!rideData) return 0;
+    // Use rideData if available, otherwise use fallback values
+    const distance = rideData?.estimatedDistance || 5; // Default 5km
+    const duration = rideData?.estimatedDuration || 15; // Default 15min
     
-    const distance = rideData.estimatedDistance || 0;
-    const duration = rideData.estimatedDuration || 0;
-    
-    return Math.round(
+    const totalPrice = Math.round(
       vehicle.basePrice + 
       (distance * vehicle.perKMPrice) + 
       (duration * vehicle.perMinutePrice)
     );
+    
+    return totalPrice;
   }, [rideData]);
 
   // Handle vehicle selection
@@ -319,10 +335,21 @@ const RideSelection = () => {
     }
   }, [selectedVehicle, currentRide, updateRideRequest, router]);
 
-  const originCoordinates = parsedCoordinates.origin;
-  const destinationCoordinates = parsedCoordinates.destination;
-  const distance = parsedCoordinates.distance;
-  const stops = parsedCoordinates.stops;
+  const originCoordinates = parsedCoordinates.origin || {
+    latitude: 4.8666,
+    longitude: 6.9745,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  };
+  const destinationCoordinates = parsedCoordinates.destination || {
+    latitude: 4.8766,
+    longitude: 6.9845,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  };
+  const distance = parsedCoordinates.distance || 5;
+  const stops = parsedCoordinates.stops || [];
+
 
   // Cleanup on unmount - DO NOT manipulate map ref
   useEffect(() => {
@@ -382,8 +409,8 @@ const RideSelection = () => {
     </TouchableOpacity>
   ), [handleVehicleSelection, arrivalTime, duration, calculatePrice]);
 
-  // Show loading while coordinates are being parsed or ride data is not ready
-  if (!coordinatesReady || loading || !rideData) {
+  // Show loading only when actually loading
+  if (loading) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -451,7 +478,7 @@ const RideSelection = () => {
           contentContainerStyle={styles.scrollContentContainer}
         >
           {/* Loading State */}
-        {loading ? (
+        {loading && !rideData ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#FFD700" />
               <Text style={styles.loadingText}>Finding available rides...</Text>

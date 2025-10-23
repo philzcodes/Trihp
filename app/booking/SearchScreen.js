@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { getCurrentToken, isAuthenticated } from '../../api/client';
 import { MapComponent } from '../../components';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
@@ -309,6 +310,44 @@ const SearchScreen = ({ route }) => {
       return;
     }
 
+    // Check authentication status
+    const isUserAuthenticated = await isAuthenticated();
+    const currentToken = await getCurrentToken();
+    
+    console.log('Authentication check:', {
+      isAuthenticated: isUserAuthenticated,
+      hasToken: !!currentToken,
+      tokenPreview: currentToken ? currentToken.substring(0, 20) + '...' : 'No token',
+      userData: !!userData,
+    });
+
+    if (!isUserAuthenticated || !currentToken) {
+      Alert.alert('Authentication Required', 'Please log in again to create a ride request');
+      return;
+    }
+
+    // Test API call to verify token works
+    try {
+      console.log('Testing API authentication...');
+      const testResponse = await fetch('http://192.168.100.243:3000/api/trihp/v1/users/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (testResponse.ok) {
+        console.log('✅ Token is valid - API test successful');
+      } else {
+        console.log('❌ Token is invalid - API test failed:', testResponse.status);
+        const errorData = await testResponse.json();
+        console.log('Error details:', errorData);
+      }
+    } catch (testError) {
+      console.log('❌ API test failed with error:', testError);
+    }
+
     try {
       setLoading(true);
 
@@ -320,12 +359,30 @@ const SearchScreen = ({ route }) => {
         destinationCoordinates.longitude
       );
 
+      console.log('Distance calculation:', {
+        origin: { lat: originCoordinates.latitude, lng: originCoordinates.longitude },
+        destination: { lat: destinationCoordinates.latitude, lng: destinationCoordinates.longitude },
+        calculatedDistance: distance,
+        distanceInKM: distance,
+      });
+
       // Mock pricing calculation (you can replace this with actual pricing logic)
       const baseFare = 50; // Base fare
       const perKMCharge = 25; // Per kilometer charge
       const perMinuteCharge = 2; // Per minute charge
       const estimatedDuration = Math.max(5, distance * 2); // Rough estimate: 2 minutes per km
       const totalFare = baseFare + (distance * perKMCharge) + (estimatedDuration * perMinuteCharge);
+
+      console.log('Pricing calculation:', {
+        baseFare,
+        perKMCharge,
+        perMinuteCharge,
+        distance,
+        estimatedDuration,
+        distanceCharge: distance * perKMCharge,
+        timeCharge: estimatedDuration * perMinuteCharge,
+        totalFare,
+      });
 
       // Create ride request data
       const rideRequestData = {
@@ -355,6 +412,15 @@ const SearchScreen = ({ route }) => {
       const response = await createRideRequest(rideRequestData);
       
       console.log('Ride request created:', response);
+
+      console.log('Navigating to RideSelection with params:', {
+        rideId: response.id,
+        pickupAddress: originLocation,
+        destinationAddress: destinationLocation,
+        estimatedDistance: distance.toString(),
+        estimatedDuration: estimatedDuration.toString(),
+        totalFare: Math.round(totalFare).toString(),
+      });
 
       // Navigate to RideSelection with ride data
       router.push({

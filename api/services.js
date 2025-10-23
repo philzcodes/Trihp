@@ -222,9 +222,7 @@ export const riderAPI = {
   // Get rider profile
   getRiderProfile: async () => {
     try {
-      const response = await api.get(Constant.getRiderProfile, {
-        requiresAuth: true,
-      });
+      const response = await api.get(Constant.getRiderProfile);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
