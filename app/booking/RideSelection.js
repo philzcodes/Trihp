@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { clearRequestQueue, getQueueStats } from '../../api/client';
 import { MapComponent } from '../../components';
+import PricingHelper from '../../helper/pricingHelper';
 import useBookingStore from '../../store/bookingStore';
 
 const RideSelection = () => {
@@ -33,8 +35,12 @@ const RideSelection = () => {
   const [arrivalTime, setArrivalTime] = useState('10:30');
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   const [rideData, setRideData] = useState(null);
+  const [vehiclePricing, setVehiclePricing] = useState({});
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Vehicle data matching backend VehicleType enum
+  // Vehicle data matching backend VehicleType enum (without hardcoded pricing)
   const vehicles = [
     {
       id: 1,
@@ -42,9 +48,6 @@ const RideSelection = () => {
       type: 'CAR',
       image: require('../../assets/images/car.png'),
       seats: 4,
-      basePrice: 50,
-      perKMPrice: 25,
-      perMinutePrice: 2,
       category: 'premium',
       available: true,
     },
@@ -54,9 +57,6 @@ const RideSelection = () => {
       type: 'KEKE',
       image: require('../../assets/images/auto.png'),
       seats: 3,
-      basePrice: 30,
-      perKMPrice: 15,
-      perMinutePrice: 1.5,
       category: 'standard',
       available: true,
     },
@@ -66,9 +66,6 @@ const RideSelection = () => {
       type: 'BIKE',
       image: require('../../assets/images/bike.png'),
       seats: 1,
-      basePrice: 25,
-      perKMPrice: 12,
-      perMinutePrice: 1,
       category: 'economy',
       available: true,
     },
@@ -81,9 +78,6 @@ const RideSelection = () => {
       type: 'LITE',
       image: require('../../assets/images/lite.png'),
       seats: 4,
-      basePrice: 40,
-      perKMPrice: 20,
-      perMinutePrice: 1.8,
       category: 'economy',
       available: true,
     },
@@ -93,9 +87,6 @@ const RideSelection = () => {
       type: 'LUXE',
       image: require('../../assets/images/luxe.png'),
       seats: 4,
-      basePrice: 80,
-      perKMPrice: 40,
-      perMinutePrice: 3,
       category: 'luxury',
       available: true,
     },
@@ -105,9 +96,6 @@ const RideSelection = () => {
       type: 'SUV',
       image: require('../../assets/images/suv.png'),
       seats: 6,
-      basePrice: 70,
-      perKMPrice: 35,
-      perMinutePrice: 2.5,
       category: 'premium',
       available: true,
     },
@@ -274,20 +262,117 @@ const RideSelection = () => {
     return () => clearTimeout(timeoutId);
   }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.distance, params.estimatedDuration, params.totalFare, currentRide?.id]);
 
-  // Calculate price for selected vehicle
+  // Calculate pricing when coordinates are ready
+  useEffect(() => {
+    if (coordinatesReady && parsedCoordinates.origin && parsedCoordinates.destination) {
+      calculateVehiclePricing();
+    }
+  }, [coordinatesReady, parsedCoordinates.origin, parsedCoordinates.destination, calculateVehiclePricing]);
+
+  // Retry pricing calculation
+  const retryPricingCalculation = useCallback(async () => {
+    if (retryCount >= 3) {
+      Alert.alert(
+        'Service Unavailable',
+        'Unable to get real-time pricing. Please try again later or contact support.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setRetryCount(prev => prev + 1);
+    setPricingError(null);
+    
+    // Clear cache and request queue, then retry
+    PricingHelper.clearCache();
+    clearRequestQueue();
+    
+    console.log('Queue stats before retry:', getQueueStats());
+    await calculateVehiclePricing();
+  }, [retryCount, calculateVehiclePricing]);
+
+  // Calculate pricing for all vehicles using API
+  const calculateVehiclePricing = useCallback(async () => {
+    if (!parsedCoordinates.origin || !parsedCoordinates.destination) {
+      console.log('Coordinates not ready for pricing calculation');
+      return;
+    }
+
+    try {
+      setPricingLoading(true);
+      console.log('Calculating pricing for all vehicles...');
+
+      const allVehicles = [...vehicles, ...moreVehicles];
+      const vehicleTypes = allVehicles.map(v => v.type);
+
+      const pricingParams = {
+        pickupLatitude: parsedCoordinates.origin.latitude,
+        pickupLongitude: parsedCoordinates.origin.longitude,
+        dropOffLatitude: parsedCoordinates.destination.latitude,
+        dropOffLongitude: parsedCoordinates.destination.longitude,
+        estimatedDistance: parsedCoordinates.distance || rideData?.estimatedDistance,
+        estimatedDuration: rideData?.estimatedDuration,
+      };
+
+      const pricingResults = await PricingHelper.calculatePricesForVehicles(
+        pricingParams,
+        vehicleTypes
+      );
+
+      // Convert results to a map for easy lookup
+      const pricingMap = {};
+      pricingResults.forEach(result => {
+        pricingMap[result.vehicleType] = PricingHelper.formatPricingResult(result);
+      });
+
+      setVehiclePricing(pricingMap);
+      console.log('Pricing calculated successfully:', pricingMap);
+      setPricingError(null);
+    } catch (error) {
+      console.error('Error calculating vehicle pricing:', error);
+      setPricingError(error.message);
+      
+      // Check if we should use fallback pricing
+      if (PricingHelper.shouldUseFallback(error)) {
+        console.log('Using fallback pricing due to rate limiting');
+        Alert.alert(
+          'Pricing Service Busy', 
+          'We\'re experiencing high demand. Using estimated pricing for now.',
+          [
+            { text: 'OK' },
+            { text: 'Retry', onPress: retryPricingCalculation }
+          ]
+        );
+      }
+      
+      // Set fallback pricing for all vehicles
+      const fallbackPricing = {};
+      [...vehicles, ...moreVehicles].forEach(vehicle => {
+        fallbackPricing[vehicle.type] = {
+          totalFare: PricingHelper.getFallbackPrice(vehicle.type, parsedCoordinates.distance || 5),
+          error: 'Using fallback pricing',
+        };
+      });
+      setVehiclePricing(fallbackPricing);
+    } finally {
+      setPricingLoading(false);
+    }
+  }, [parsedCoordinates, rideData]);
+
+  // Calculate price for selected vehicle (updated to use API pricing)
   const calculatePrice = useCallback((vehicle) => {
-    // Use rideData if available, otherwise use fallback values
-    const distance = rideData?.estimatedDistance || 5; // Default 5km
-    const duration = rideData?.estimatedDuration || 15; // Default 15min
+    const pricing = vehiclePricing[vehicle.type];
+    if (pricing && !pricing.error) {
+      return pricing.totalFare;
+    }
     
-    const totalPrice = Math.round(
-      vehicle.basePrice + 
-      (distance * vehicle.perKMPrice) + 
-      (duration * vehicle.perMinutePrice)
-    );
+    // Fallback to hardcoded pricing if API pricing is not available
+    const distance = rideData?.estimatedDistance || 5;
+    const duration = rideData?.estimatedDuration || 15;
     
-    return totalPrice;
-  }, [rideData]);
+    // Use fallback pricing
+    return PricingHelper.getFallbackPrice(vehicle.type, distance);
+  }, [vehiclePricing, rideData]);
 
   // Handle vehicle selection
   const handleVehicleSelection = useCallback(async (vehicle) => {
@@ -295,22 +380,29 @@ const RideSelection = () => {
       setSelectedVehicle(vehicle);
       
       if (currentRide && currentRide.id) {
-        // Update the ride request with selected vehicle type and recalculated price
-        const newPrice = calculatePrice(vehicle);
+        // Get pricing data for the selected vehicle
+        const pricing = vehiclePricing[vehicle.type];
+        const price = calculatePrice(vehicle);
         
+        // Update the ride request with selected vehicle type and pricing
         await updateRideRequest(currentRide.id, {
           vehicleType: vehicle.type,
-          baseFare: vehicle.basePrice,
-          perKMCharge: vehicle.perKMPrice,
-          perMinuteCharge: vehicle.perMinutePrice,
-          totalFare: newPrice,
+          totalFare: price,
+          ...(pricing && !pricing.error && {
+            baseFare: pricing.baseFare,
+            perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
+            perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
+            surgeMultiplier: pricing.surgeMultiplier,
+            tax: pricing.tax,
+            bookingFee: pricing.bookingFee,
+          }),
         });
       }
     } catch (error) {
       console.error('Error updating ride request:', error);
       Alert.alert('Error', 'Failed to update ride request. Please try again.');
     }
-  }, [currentRide, calculatePrice, updateRideRequest]);
+  }, [currentRide, calculatePrice, updateRideRequest, vehiclePricing]);
 
   // Handle confirm ride
   const handleConfirmRide = useCallback(async () => {
@@ -380,34 +472,50 @@ const RideSelection = () => {
     setArrivalTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
   }, []);
 
-  const renderVehicleItem = useCallback((item, isSelected = false) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[
-        styles.vehicleCard,
-        isSelected && styles.selectedVehicleCard
-      ]}
-      onPress={() => handleVehicleSelection(item)}
-      activeOpacity={0.7}
-    >
-      <Image 
-        source={item.image} 
-        style={styles.vehicleImage} 
-        resizeMode="contain"
-      />
-      <View style={styles.vehicleDetails}>
-        <View style={styles.vehicleHeader}>
-        <Text style={styles.vehicleName}>{item.name}</Text>
-          <Icon name="person" size={14} color="#FFFFFF" style={styles.personIcon} />
-          <Text style={styles.vehicleSeats}>- {item.seats}</Text>
-        </View>
+  const renderVehicleItem = useCallback((item, isSelected = false) => {
+    const pricing = vehiclePricing[item.type];
+    const price = calculatePrice(item);
+    const isLoading = pricingLoading && !pricing;
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={[
+          styles.vehicleCard,
+          isSelected && styles.selectedVehicleCard
+        ]}
+        onPress={() => handleVehicleSelection(item)}
+        activeOpacity={0.7}
+        disabled={isLoading}
+      >
+        <Image 
+          source={item.image} 
+          style={styles.vehicleImage} 
+          resizeMode="contain"
+        />
+        <View style={styles.vehicleDetails}>
+          <View style={styles.vehicleHeader}>
+            <Text style={styles.vehicleName}>{item.name}</Text>
+            <Icon name="person" size={14} color="#FFFFFF" style={styles.personIcon} />
+            <Text style={styles.vehicleSeats}>- {item.seats}</Text>
+          </View>
           <Text style={styles.vehicleTime}>
-          {arrivalTime} - {duration} away
+            {arrivalTime} - {duration} away
           </Text>
+          {pricing?.error && (
+            <Text style={styles.pricingError}>Using estimated pricing</Text>
+          )}
         </View>
-      <Text style={styles.vehiclePrice}>${calculatePrice(item)}</Text>
-    </TouchableOpacity>
-  ), [handleVehicleSelection, arrivalTime, duration, calculatePrice]);
+        <View style={styles.priceContainer}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFD700" />
+          ) : (
+            <Text style={styles.vehiclePrice}>${price}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }, [handleVehicleSelection, arrivalTime, duration, calculatePrice, vehiclePricing, pricingLoading]);
 
   // Show loading only when actually loading
   if (loading) {
@@ -483,6 +591,20 @@ const RideSelection = () => {
               <ActivityIndicator size="large" color="#FFD700" />
               <Text style={styles.loadingText}>Finding available rides...</Text>
           </View>
+        ) : pricingError && Object.keys(vehiclePricing).length === 0 ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Unable to load pricing</Text>
+              <Text style={styles.errorSubText}>{pricingError}</Text>
+              <TouchableOpacity 
+                style={styles.retryButton} 
+                onPress={retryPricingCalculation}
+                disabled={retryCount >= 3}
+              >
+                <Text style={styles.retryButtonText}>
+                  {retryCount >= 3 ? 'Max Retries Reached' : 'Retry Pricing'}
+                </Text>
+              </TouchableOpacity>
+            </View>
         ) : (
             <>
               {/* Main Vehicles */}
@@ -739,6 +861,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  priceContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+  },
+  pricingError: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
   moreRidesSection: {
     marginTop: 24,
     paddingHorizontal: 20,
@@ -824,6 +957,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: '#8E8E93',
     marginBottom: 24,
     textAlign: 'center',
   },

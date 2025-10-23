@@ -42,6 +42,11 @@ const Constant = {
   updateRideStatus: 'ride-request',
   cancelRide: 'ride-request',
   
+  // Pricing endpoints
+  calculatePrice: 'ride-request/calculate-price',
+  getAvailableServices: 'ride-request/pricing/services',
+  getAvailableRegions: 'ride-request/pricing/regions',
+  
   // Ride endpoints (legacy - keeping for compatibility)
   createRide: 'ride/create',
   getRide: 'ride/get',

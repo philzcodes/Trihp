@@ -124,6 +124,42 @@ export const rideRequestAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Pricing endpoints
+  calculatePrice: async (pricingData) => {
+    try {
+      console.log('Calculating price via rideRequestAPI:', pricingData);
+      const response = await api.post(Constant.calculatePrice, pricingData);
+      return response.data;
+    } catch (error) {
+      console.error('Calculate price API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  getAvailableServices: async (regionId = null) => {
+    try {
+      const url = regionId 
+        ? `${Constant.getAvailableServices}?regionId=${regionId}`
+        : Constant.getAvailableServices;
+      
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Get available services API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  getAvailableRegions: async () => {
+    try {
+      const response = await api.get(Constant.getAvailableRegions);
+      return response.data;
+    } catch (error) {
+      console.error('Get available regions API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default rideRequestAPI;

@@ -416,6 +416,56 @@ export const paymentAPI = {
   },
 };
 
+// Pricing API Services
+export const pricingAPI = {
+  // Calculate ride price
+  calculatePrice: async (pricingData) => {
+    try {
+      console.log('Calculating price:', pricingData);
+      const response = await api.post(Constant.calculatePrice, pricingData, {
+        requiresAuth: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Calculate price API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get available services
+  getAvailableServices: async (regionId = null) => {
+    try {
+      const url = regionId 
+        ? `${Constant.getAvailableServices}?regionId=${regionId}`
+        : Constant.getAvailableServices;
+      
+      const response = await api.get(url, {
+        requiresAuth: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get available services API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get available regions
+  getAvailableRegions: async () => {
+    try {
+      const response = await api.get(Constant.getAvailableRegions, {
+        requiresAuth: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get available regions API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 export default {
   authAPI,
   userAPI,
@@ -423,4 +473,5 @@ export default {
   rideAPI,
   rideRequestAPI,
   paymentAPI,
+  pricingAPI,
 };
