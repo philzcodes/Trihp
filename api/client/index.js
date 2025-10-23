@@ -3,7 +3,11 @@ import axios from 'axios';
 
 // API Configuration
 const API_CONFIG = {
-  baseUrl: 'https://trihp-system-backend.onrender.com/api/trihp/v1', // Updated to use Trihp backend
+  // Production endpoint (commented out)
+  // baseUrl: 'https://trihp-system-backend.onrender.com/api/trihp/v1',
+  
+  // Development endpoint
+  baseUrl: 'http://192.168.100.243:3000/api/trihp/v1',
   timeout: 10000,
 };
 

@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -9,11 +10,12 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { MapComponent } from '../../components';
+import useBookingStore from '../../store/bookingStore';
 
 const RideSelection = () => {
   const router = useRouter();
@@ -21,39 +23,52 @@ const RideSelection = () => {
   const mapRef = useRef(null);
   const isMountedRef = useRef(true);
 
+  // Zustand store
+  const { currentRide, updateRideRequest, setCurrentRide, loading: storeLoading } = useBookingStore();
+
   // State
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [duration, setDuration] = useState('1 Min');
   const [arrivalTime, setArrivalTime] = useState('10:30');
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
+  const [rideData, setRideData] = useState(null);
 
-  // Dummy vehicle data matching the design
+  // Vehicle data matching backend VehicleType enum
   const vehicles = [
     {
       id: 1,
       name: 'Trihp Smooth',
+      type: 'CAR',
       image: require('../../assets/images/car.png'),
       seats: 4,
-      price: 20,
+      basePrice: 50,
+      perKMPrice: 25,
+      perMinutePrice: 2,
       category: 'premium',
       available: true,
     },
     {
       id: 2,
-      name: 'Trihp keke',
+      name: 'Trihp Keke',
+      type: 'KEKE',
       image: require('../../assets/images/auto.png'),
       seats: 3,
-      price: 15,
+      basePrice: 30,
+      perKMPrice: 15,
+      perMinutePrice: 1.5,
       category: 'standard',
       available: true,
     },
     {
       id: 3,
-      name: 'Trihp motorcycle',
+      name: 'Trihp Motorcycle',
+      type: 'BIKE',
       image: require('../../assets/images/bike.png'),
       seats: 1,
-      price: 15,
+      basePrice: 25,
+      perKMPrice: 12,
+      perMinutePrice: 1,
       category: 'economy',
       available: true,
     },
@@ -62,11 +77,38 @@ const RideSelection = () => {
   const moreVehicles = [
     {
       id: 4,
-      name: 'Trihp lite (no A/C)',
+      name: 'Trihp Lite',
+      type: 'LITE',
       image: require('../../assets/images/lite.png'),
       seats: 4,
-      price: 15,
+      basePrice: 40,
+      perKMPrice: 20,
+      perMinutePrice: 1.8,
       category: 'economy',
+      available: true,
+    },
+    {
+      id: 5,
+      name: 'Trihp Luxe',
+      type: 'LUXE',
+      image: require('../../assets/images/luxe.png'),
+      seats: 4,
+      basePrice: 80,
+      perKMPrice: 40,
+      perMinutePrice: 3,
+      category: 'luxury',
+      available: true,
+    },
+    {
+      id: 6,
+      name: 'Trihp SUV',
+      type: 'SUV',
+      image: require('../../assets/images/suv.png'),
+      seats: 6,
+      basePrice: 70,
+      perKMPrice: 35,
+      perMinutePrice: 2.5,
+      category: 'premium',
       available: true,
     },
   ];
@@ -174,7 +216,108 @@ const RideSelection = () => {
     }, 500); // Give time for params to be fully loaded
 
     return () => clearTimeout(timer);
-  }, [params]);
+  }, [params?.originCoordinates, params?.destinationCoordinates, params?.distance, params?.stops]);
+
+  // Initialize ride data from params or store
+  useEffect(() => {
+    const initializeRideData = () => {
+      try {
+        // Get ride data from params or current ride in store
+        const rideInfo = currentRide || {
+          id: params.rideId,
+          pickupAddress: params.pickupAddress,
+          dropOffAddress: params.destinationAddress,
+          estimatedDistance: parseFloat(params.estimatedDistance || '0'),
+          estimatedDuration: parseFloat(params.estimatedDuration || '0'),
+          totalFare: parseFloat(params.totalFare || '0'),
+        };
+
+        setRideData(rideInfo);
+        
+        // Set duration and arrival time based on estimated duration
+        if (rideInfo.estimatedDuration) {
+          setDuration(`${Math.round(rideInfo.estimatedDuration)} Min`);
+          const arrival = new Date();
+          arrival.setMinutes(arrival.getMinutes() + Math.round(rideInfo.estimatedDuration));
+          setArrivalTime(arrival.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          }));
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error initializing ride data:', error);
+        setLoading(false);
+      }
+    };
+
+    // Only initialize if we have the required data
+    if (params.rideId || currentRide) {
+      initializeRideData();
+    }
+  }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.estimatedDuration, params.totalFare, currentRide?.id]);
+
+  // Calculate price for selected vehicle
+  const calculatePrice = useCallback((vehicle) => {
+    if (!rideData) return 0;
+    
+    const distance = rideData.estimatedDistance || 0;
+    const duration = rideData.estimatedDuration || 0;
+    
+    return Math.round(
+      vehicle.basePrice + 
+      (distance * vehicle.perKMPrice) + 
+      (duration * vehicle.perMinutePrice)
+    );
+  }, [rideData]);
+
+  // Handle vehicle selection
+  const handleVehicleSelection = useCallback(async (vehicle) => {
+    try {
+      setSelectedVehicle(vehicle);
+      
+      if (currentRide && currentRide.id) {
+        // Update the ride request with selected vehicle type and recalculated price
+        const newPrice = calculatePrice(vehicle);
+        
+        await updateRideRequest(currentRide.id, {
+          vehicleType: vehicle.type,
+          baseFare: vehicle.basePrice,
+          perKMCharge: vehicle.perKMPrice,
+          perMinuteCharge: vehicle.perMinutePrice,
+          totalFare: newPrice,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating ride request:', error);
+      Alert.alert('Error', 'Failed to update ride request. Please try again.');
+    }
+  }, [currentRide, calculatePrice, updateRideRequest]);
+
+  // Handle confirm ride
+  const handleConfirmRide = useCallback(async () => {
+    if (!selectedVehicle) {
+      Alert.alert('Select Vehicle', 'Please select a vehicle type to continue.');
+      return;
+    }
+
+    try {
+      // Update ride status to SEARCHING_DRIVER
+      if (currentRide && currentRide.id) {
+        await updateRideRequest(currentRide.id, {
+          status: 'SEARCHING_DRIVER',
+        });
+      }
+
+      // Navigate to driver search screen
+      router.push('/booking/FetchingRide');
+    } catch (error) {
+      console.error('Error confirming ride:', error);
+      Alert.alert('Error', 'Failed to confirm ride. Please try again.');
+    }
+  }, [selectedVehicle, currentRide, updateRideRequest, router]);
 
   const originCoordinates = parsedCoordinates.origin;
   const destinationCoordinates = parsedCoordinates.destination;
@@ -210,38 +353,14 @@ const RideSelection = () => {
     setArrivalTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
   }, []);
 
-  const handleConfirmRide = () => {
-    if (!selectedVehicle || !originCoordinates || !destinationCoordinates || !isMountedRef.current) return;
-    
-    // Mark as unmounting to prevent any pending operations
-    isMountedRef.current = false;
-    
-    // Navigate to next screen with ride details
-    router.push({
-      pathname: '/booking/PickupConfirm',
-      params: {
-        originCoordinates: JSON.stringify(originCoordinates),
-        destinationCoordinates: JSON.stringify(destinationCoordinates),
-        destinationLocation: params?.destinationLocation,
-        originLocation: params?.originLocation,
-        paymentMethod: selectedPayment?.name,
-      ride_category: selectedVehicle?.name,
-      vehicle_category_id: selectedVehicle?.id,
-      amount: selectedVehicle?.price,
-        distance: distance,
-        stops: JSON.stringify(stops),
-      }
-    });
-  };
-
-  const renderVehicleItem = (item, isSelected = false) => (
+  const renderVehicleItem = useCallback((item, isSelected = false) => (
     <TouchableOpacity
       key={item.id}
       style={[
         styles.vehicleCard,
         isSelected && styles.selectedVehicleCard
       ]}
-      onPress={() => setSelectedVehicle(item)}
+      onPress={() => handleVehicleSelection(item)}
       activeOpacity={0.7}
     >
       <Image 
@@ -259,19 +378,12 @@ const RideSelection = () => {
           {arrivalTime} - {duration} away
           </Text>
         </View>
-      <Text style={styles.vehiclePrice}>${item.price}</Text>
+      <Text style={styles.vehiclePrice}>${calculatePrice(item)}</Text>
     </TouchableOpacity>
-  );
+  ), [handleVehicleSelection, arrivalTime, duration, calculatePrice]);
 
-  // Debug logging to understand coordinate parsing
-  console.log('RideSelection - Raw params:', params);
-  console.log('RideSelection - Parsed originCoordinates:', originCoordinates);
-  console.log('RideSelection - Parsed destinationCoordinates:', destinationCoordinates);
-  console.log('RideSelection - originCoordinates type:', typeof originCoordinates);
-  console.log('RideSelection - destinationCoordinates type:', typeof destinationCoordinates);
-
-  // Show loading while coordinates are being parsed
-  if (!coordinatesReady) {
+  // Show loading while coordinates are being parsed or ride data is not ready
+  if (!coordinatesReady || loading || !rideData) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#000000" />

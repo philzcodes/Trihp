@@ -1,5 +1,9 @@
 // API Constants - Updated for Trihp backend
-const devUrl = 'https://trihp-system-backend.onrender.com/api/trihp/v1';
+// Production endpoint (commented out)
+// const prodUrl = 'https://trihp-system-backend.onrender.com/api/trihp/v1';
+
+// Development endpoint
+const devUrl = 'http://192.168.100.243:3000/api/trihp/v1';
 
 const Constant = {
   baseUrl: devUrl,
@@ -30,6 +34,13 @@ const Constant = {
   getRideRequest: 'ride-request',
   updateRideRequest: 'ride-request',
   deleteRideRequest: 'ride-request',
+  getRideByRider: 'ride-request/rider',
+  getRideByDriver: 'ride-request/driver',
+  getRideByStatus: 'ride-request/status',
+  getActiveRideByRider: 'ride-request/rider/active',
+  getActiveRideByDriver: 'ride-request/driver/active',
+  updateRideStatus: 'ride-request',
+  cancelRide: 'ride-request',
   
   // Ride endpoints (legacy - keeping for compatibility)
   createRide: 'ride/create',

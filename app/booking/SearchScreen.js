@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -20,6 +21,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { MapComponent } from '../../components';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
+import useBookingStore from '../../store/bookingStore';
+import useUserStore from '../../store/userStore';
 import { GOOGLE_MAPS_APIKEY } from '../../utils/Api';
 
 const SearchScreen = ({ route }) => {
@@ -39,6 +42,10 @@ const SearchScreen = ({ route }) => {
   const [focusedInput, setFocusedInput] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isReturningFromRide, setIsReturningFromRide] = useState(false);
+
+  // Zustand stores
+  const { createRideRequest, setCurrentRide } = useBookingStore();
+  const { userData, getUserName, getUserPhone } = useUserStore();
 
   // Mock recent locations - matching the image
   const recentLocations = [
@@ -285,7 +292,93 @@ const SearchScreen = ({ route }) => {
     checkLocation(item.address, false);
   };
 
+  const handleCreateRideRequest = async () => {
+    // Validate inputs
+    if (!originLocation || !destinationLocation) {
+      Alert.alert('Missing Information', 'Please select both pickup and destination locations');
+      return;
+    }
+
+    if (!originCoordinates || !destinationCoordinates) {
+      Alert.alert('Location Error', 'Please wait for location coordinates to be loaded');
+      return;
+    }
+
+    if (!userData) {
+      Alert.alert('Authentication Required', 'Please log in to create a ride request');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Calculate distance and estimated duration
+      const distance = haversineDistance(
+        originCoordinates.latitude,
+        originCoordinates.longitude,
+        destinationCoordinates.latitude,
+        destinationCoordinates.longitude
+      );
+
+      // Mock pricing calculation (you can replace this with actual pricing logic)
+      const baseFare = 50; // Base fare
+      const perKMCharge = 25; // Per kilometer charge
+      const perMinuteCharge = 2; // Per minute charge
+      const estimatedDuration = Math.max(5, distance * 2); // Rough estimate: 2 minutes per km
+      const totalFare = baseFare + (distance * perKMCharge) + (estimatedDuration * perMinuteCharge);
+
+      // Create ride request data
+      const rideRequestData = {
+        riderId: userData.id,
+        riderName: getUserName(),
+        riderPhone: getUserPhone(),
+        pickupLatitude: originCoordinates.latitude,
+        pickupLongitude: originCoordinates.longitude,
+        pickupAddress: originLocation,
+        dropOffLatitude: destinationCoordinates.latitude,
+        dropOffLongitude: destinationCoordinates.longitude,
+        dropOffAddress: destinationLocation,
+        vehicleType: 'CAR', // Default vehicle type
+        estimatedDistance: distance,
+        estimatedDuration: estimatedDuration,
+        baseFare: baseFare,
+        perKMCharge: perKMCharge,
+        perMinuteCharge: perMinuteCharge,
+        totalFare: Math.round(totalFare),
+        specialInstructions: '',
+        isScheduled: false,
+      };
+
+      console.log('Creating ride request with data:', rideRequestData);
+
+      // Create the ride request
+      const response = await createRideRequest(rideRequestData);
+      
+      console.log('Ride request created:', response);
+
+      // Navigate to RideSelection with ride data
+      router.push({
+        pathname: '/booking/RideSelection',
+        params: {
+          rideId: response.id,
+          pickupAddress: originLocation,
+          destinationAddress: destinationLocation,
+          estimatedDistance: distance.toString(),
+          estimatedDuration: estimatedDuration.toString(),
+          totalFare: Math.round(totalFare).toString(),
+        }
+      });
+
+    } catch (error) {
+      console.error('Error creating ride request:', error);
+      Alert.alert('Error', 'Failed to create ride request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showRecentLocations = !originShowList && !dropShowList && !keyboardVisible;
+  const canCreateRide = originLocation && destinationLocation && originCoordinates && destinationCoordinates;
 
   return (
     <KeyboardAvoidingView
@@ -486,6 +579,18 @@ const SearchScreen = ({ route }) => {
         )}
         </View>
 
+        {/* Floating Action Button */}
+        {canCreateRide && (
+          <TouchableOpacity
+            style={styles.floatingActionButton}
+            onPress={handleCreateRideRequest}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fabText}>Continue</Text>
+            <Icon name="arrow-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+
         <Loader modalVisible={loading} setModalVisible={setLoading} />
       </View>
     </KeyboardAvoidingView>
@@ -651,6 +756,33 @@ const styles = StyleSheet.create({
     height: 12,
     backgroundColor: '#FF3B30',
     marginTop: -1,
+  },
+  floatingActionButton: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: '#007AFF',
+    borderRadius: 25,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginRight: 8,
   },
 });
 
