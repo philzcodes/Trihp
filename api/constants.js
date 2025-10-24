@@ -47,6 +47,11 @@ const Constant = {
   getAvailableServices: 'ride-request/pricing/services',
   getAvailableRegions: 'ride-request/pricing/regions',
   
+  // Driver endpoints
+  acceptRide: 'ride-request',
+  rejectRide: 'ride-request',
+  getAvailableRideRequests: 'ride-request/available-for-drivers',
+  
   // Ride endpoints (legacy - keeping for compatibility)
   createRide: 'ride/create',
   getRide: 'ride/get',

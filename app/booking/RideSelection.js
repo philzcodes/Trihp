@@ -455,8 +455,30 @@ const RideSelection = () => {
         });
       }
 
-      // Navigate to driver search screen
-      router.push('/booking/FetchingRide');
+      // Prepare ride data for navigation
+      const rideData = {
+        id: currentRide.id,
+        pickup_latitude: currentRide.pickupLatitude,
+        pickup_longitude: currentRide.pickupLongitude,
+        pickup_location_name: currentRide.pickupAddress,
+        drop_latitude: currentRide.dropOffLatitude,
+        drop_longitude: currentRide.dropOffLongitude,
+        drop_location_name: currentRide.dropOffAddress,
+        amount: currentRide.totalFare?.toString() || '25',
+        distance: currentRide.estimatedDistance?.toString() || '5.2',
+        payment_type: 'cash' // Default payment type
+      };
+      
+      console.log('RideSelection - Navigating to FetchingRide with data:', rideData);
+      console.log('RideSelection - Current ride object:', currentRide);
+      
+      // Navigate to driver search screen with ride data
+      router.push({
+        pathname: '/booking/FetchingRide',
+        params: { 
+          info: JSON.stringify(rideData)
+        }
+      });
     } catch (error) {
       console.error('Error confirming ride:', error);
       Alert.alert('Error', 'Failed to confirm ride. Please try again.');
