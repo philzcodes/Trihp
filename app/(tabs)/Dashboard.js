@@ -25,8 +25,14 @@ import DashboardHeader from '../../components/DashboardHeader';
 // Constants
 import { Colors, Fonts } from '../../constants';
 
+// Store
+import useUserStore from '../../store/userStore';
+
 const Dashboard = () => {
   const router = useRouter();
+  
+  // User store
+  const { userData, fetchUser, isAuthenticated } = useUserStore();
   
   // Banner data - using the same image-based approach
   const bannerData = [
@@ -122,6 +128,113 @@ const Dashboard = () => {
     }
   };
 
+  // Check for active ride and redirect if found
+  const checkActiveRide = async () => {
+    try {
+      // Get rider ID from user store
+      if (!userData || !userData.id) {
+        console.log('No user data available, skipping active ride check');
+        return false;
+      }
+      
+      const riderId = userData.id;
+      console.log('Checking for active ride for rider:', riderId);
+      
+      // Import the API dynamically to avoid circular imports
+      const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+      console.log('Making API call to get current ride for rider:', riderId);
+      const response = await rideRequestAPI.getCurrentRideForRider(riderId);
+      
+      console.log('Active ride check response:', response);
+      
+      if (response && response.data) {
+        const activeRide = response.data;
+        console.log('Active ride found:', activeRide);
+        
+        // Navigate to appropriate screen based on ride status
+        if (activeRide.status === 'SEARCHING_DRIVER') {
+          console.log('Redirecting to FetchingRide screen');
+          router.push({
+            pathname: '/booking/FetchingRide',
+            params: { 
+              info: JSON.stringify({
+                id: activeRide.id,
+                pickup_latitude: activeRide.pickupLatitude,
+                pickup_longitude: activeRide.pickupLongitude,
+                pickup_location_name: activeRide.pickupAddress,
+                drop_latitude: activeRide.dropOffLatitude,
+                drop_longitude: activeRide.dropOffLongitude,
+                drop_location_name: activeRide.dropOffAddress,
+                amount: activeRide.totalFare?.toString() || '25',
+                distance: activeRide.estimatedDistance?.toString() || '5.2',
+                payment_type: 'cash', // Default payment type
+                vehicleType: activeRide.vehicleType,
+                totalFare: activeRide.totalFare,
+                estimatedDistance: activeRide.estimatedDistance,
+                estimatedDuration: activeRide.estimatedDuration,
+                riderId: activeRide.riderId,
+                status: activeRide.status
+              })
+            }
+          });
+          return true; // Indicate that we redirected
+        } else if (activeRide.status === 'DRIVER_ASSIGNED') {
+          console.log('Redirecting to DriverFoundScreen');
+          const driverData = {
+            status: 200,
+            driver: {
+              id: activeRide.driverId,
+              name: activeRide.driverName || 'Driver',
+              phone: activeRide.driverPhone || '+1234567890',
+              rating: 4.8,
+              vehicle: {
+                make: 'Vehicle',
+                model: 'Model',
+                year: '2020',
+                color: 'Color',
+                plate: activeRide.driverVehicleNumber || 'ABC-123',
+                image: require('../../assets/images/TopCar.png')
+              },
+              location: {
+                latitude: parseFloat(activeRide.pickupLatitude) + 0.001,
+                longitude: parseFloat(activeRide.pickupLongitude) + 0.001,
+              },
+              estimated_arrival: '3-5 minutes',
+              distance: '0.8 km'
+            },
+            ride: {
+              id: activeRide.id,
+              pickup_location: activeRide.pickupAddress || 'Unknown Pickup',
+              drop_location: activeRide.dropOffAddress || 'Unknown Destination',
+              amount: activeRide.totalFare?.toString() || '25',
+              distance: activeRide.estimatedDistance?.toString() || '5.2',
+              payment_type: 'cash'
+            }
+          };
+          
+          router.push('/booking/DriverFoundScreen', { data: driverData });
+          return true; // Indicate that we redirected
+        } else if (activeRide.status === 'DRIVER_ARRIVED') {
+          console.log('Redirecting to DriverArrivedScreen');
+          // You can implement DriverArrivedScreen navigation here
+          // router.push('/booking/DriverArrivedScreen', { data: activeRide });
+        } else if (activeRide.status === 'TRIP_STARTED') {
+          console.log('Redirecting to TripInProgressScreen');
+          // You can implement TripInProgressScreen navigation here
+          // router.push('/booking/TripInProgressScreen', { data: activeRide });
+        }
+      }
+      
+      return false; // No active ride found
+    } catch (error) {
+      console.log('Error checking for active ride:', error);
+      console.log('User data available:', !!userData);
+      console.log('User ID available:', userData?.id);
+      console.log('Is authenticated:', isAuthenticated);
+      return false; // Continue with normal dashboard load
+    }
+  };
+
   // Dummy recent rides
   const loadRecentRides = async () => {
     setLoading(true);
@@ -136,8 +249,36 @@ const Dashboard = () => {
 
   // Effects
   useEffect(() => {
-    getLocation();
-    loadRecentRides();
+    const initializeDashboard = async () => {
+      try {
+        // First fetch user data
+        console.log('Dashboard: Fetching user data...');
+        await fetchUser();
+        
+        // Small delay to ensure user data is available
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Then check for active ride
+        console.log('Dashboard: Checking for active ride...');
+        const hasActiveRide = await checkActiveRide();
+        
+        // Only load dashboard data if no active ride was found
+        if (!hasActiveRide) {
+          console.log('Dashboard: No active ride found, loading dashboard data...');
+          getLocation();
+          loadRecentRides();
+        } else {
+          console.log('Dashboard: Active ride found, skipping dashboard data load');
+        }
+      } catch (error) {
+        console.error('Dashboard initialization error:', error);
+        // Fallback: load dashboard data anyway
+        getLocation();
+        loadRecentRides();
+      }
+    };
+    
+    initializeDashboard();
   }, []);
 
   useEffect(() => {

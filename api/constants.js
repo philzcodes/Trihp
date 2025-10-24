@@ -39,6 +39,7 @@ const Constant = {
   getRideByStatus: 'ride-request/status',
   getActiveRideByRider: 'ride-request/rider/active',
   getActiveRideByDriver: 'ride-request/driver/active',
+  getCurrentRideForRider: 'ride-request/rider',
   updateRideStatus: 'ride-request',
   cancelRide: 'ride-request',
   

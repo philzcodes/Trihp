@@ -122,13 +122,14 @@ export const rideRequestAPI = {
     }
   },
 
-  // Delete ride request
-  deleteRideRequest: async (rideId) => {
+  // Get current active ride for rider
+  getCurrentRideForRider: async (riderId) => {
     try {
-      const response = await api.delete(`${Constant.deleteRideRequest}/${rideId}`);
+      console.log('Getting current ride for rider:', riderId);
+      const response = await api.get(`${Constant.getCurrentRideForRider}/${riderId}/current`);
       return response.data;
     } catch (error) {
-      console.error('Delete ride request API error:', error);
+      console.error('Get current ride for rider API error:', error);
       throw error.response?.data || error.message;
     }
   },

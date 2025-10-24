@@ -3,14 +3,14 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
-    Image,
-    Linking,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
@@ -37,6 +37,9 @@ const DriverArrivedScreen = () => {
   }
 
   console.log('DriverArrivedScreen - Received data:', data);
+  console.log('DriverArrivedScreen - Driver info:', data?.driver);
+  console.log('DriverArrivedScreen - Driver name field:', data?.driver?.name);
+  console.log('DriverArrivedScreen - Driver first_name field:', data?.driver?.first_name);
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();
@@ -141,7 +144,7 @@ const DriverArrivedScreen = () => {
     );
   }
 
-  const driverName = driverInfo?.first_name || driverInfo?.name || 'Driver Name';
+  const driverName = driverInfo?.name || driverInfo?.first_name || 'Driver Name';
 
   return (
     <View style={styles.container}>
