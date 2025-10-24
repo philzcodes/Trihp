@@ -2,15 +2,23 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon3 from 'react-native-vector-icons/MaterialCommunityIcons';
+import rideRequestAPI from '../../api/rideRequestAPI';
 import BackHeader from '../../components/BackHeader';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts, STATUS_BAR_HEIGHT } from '../../constants';
-import { showError } from '../../helper/Toaster';
+import { showError, showSuccess } from '../../helper/Toaster';
 
 const RideCancelScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { rideId, setIsFetching } = params || {};
+  const { rideId, isFetching, reason } = params || {};
+
+  // Debug logging
+  console.log('RideCancelScreen - Received params:', params);
+  console.log('RideCancelScreen - Extracted rideId:', rideId);
+  console.log('RideCancelScreen - Extracted reason:', reason);
+  console.log('RideCancelScreen - Params keys:', Object.keys(params));
+  console.log('RideCancelScreen - Params values:', Object.values(params));
 
   const [loading, setLoading] = useState(false);
   const reasons = [
@@ -27,27 +35,43 @@ const RideCancelScreen = () => {
 
   const cancelRide = useCallback(async () => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Try to get rideId from multiple sources
+      const finalRideId = rideId || params?.rideId || params?.id;
       
-      // Dummy ride cancellation - no real API call
-      console.log('Dummy ride cancellation:', {
-        rideId,
+      if (!finalRideId) {
+        console.error('No ride ID provided for cancellation');
+        console.error('Available params:', params);
+        showError('No ride ID found. Cannot cancel ride.');
+        return;
+      }
+      
+      console.log('Using rideId for cancellation:', finalRideId);
+
+      console.log('Canceling ride:', {
+        rideId: finalRideId,
         reason: rideCancelReason?.name,
         timestamp: new Date().toISOString()
       });
       
-      // Simulate successful cancellation
-      setIsFetching(false);
-      showError('Ride has been canceled');
-      router.push('/(tabs)/Dashboard', { radius: 10 });
+      // Call the real API to cancel the ride
+      const cancellationData = {
+        cancellationReason: rideCancelReason?.name || 'User cancelled',
+        status: 'CANCELLED'
+      };
+      
+      const response = await rideRequestAPI.cancelRide(finalRideId, cancellationData);
+      console.log('Ride cancellation response:', response);
+      
+      showSuccess('Ride has been cancelled successfully');
+      router.push('/(tabs)/Dashboard');
       
     } catch (error) {
+      console.error('Error cancelling ride:', error);
+      showError('Failed to cancel ride. Please try again.');
+    } finally {
       setLoading(false);
-      showError('Error canceling ride');
-      console.error('Error in dummy ride cancellation:', error);
     }
-  }, [rideId, router, rideCancelReason, setIsFetching]);
+  }, [rideId, router, rideCancelReason, params]);
 
   const handleCancelRide = () => {
     setLoading(true);

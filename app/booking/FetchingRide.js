@@ -17,6 +17,7 @@ import MapComponent from '../../components/MapComponent';
 import PaymentModal from '../../components/Modals/PaymentTypeModal';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
+import { showError } from '../../helper/Toaster';
 
 const FetchingRide = () => {
   const paymentMode = [
@@ -83,6 +84,7 @@ const FetchingRide = () => {
   const snapPoints = useMemo(() => ['45%', '55%', '70%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
   const [isFetching, setIsFetching] = useState(true);
+  const [currentRideId, setCurrentRideId] = useState(rideId);
   const intervalIdRef = useRef(null);
   const timeoutIdRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -133,10 +135,9 @@ const FetchingRide = () => {
         const alternativeRideId = data?.id || params?.rideId || params?.id;
         if (alternativeRideId) {
           console.log('Found alternative ride ID:', alternativeRideId);
+          setCurrentRideId(alternativeRideId); // Update the state with the found ride ID
           // Import rideRequestAPI dynamically to avoid circular imports
           const { rideRequestAPI } = await import('../../api/rideRequestAPI');
-          // Update the rideId state or use it directly
-          // For now, we'll continue with the alternative ID
           const rideRequest = await rideRequestAPI.getRideRequest(alternativeRideId);
           console.log('Current ride request status:', rideRequest);
           
@@ -186,10 +187,12 @@ const FetchingRide = () => {
             setIsFetching(false);
             clearInterval(intervalIdRef.current);
             clearTimeout(timeoutIdRef.current);
-            router.push('/booking/RideCancelScreen', { 
-              isFetching: false, 
-              rideId: alternativeRideId,
-              reason: 'Ride was cancelled'
+            router.push({
+              pathname: '/booking/RideCancelScreen',
+              params: { 
+                rideId: alternativeRideId,
+                reason: 'Ride was cancelled'
+              }
             });
           } else {
             console.log('Still waiting for driver. Current status:', rideRequest.status);
@@ -199,9 +202,12 @@ const FetchingRide = () => {
           setIsFetching(false);
           clearInterval(intervalIdRef.current);
           clearTimeout(timeoutIdRef.current);
-          router.push('/booking/RideCancelScreen', { 
-            isFetching: false, 
-            reason: 'No ride ID found'
+          router.push({
+            pathname: '/booking/RideCancelScreen',
+            params: { 
+              rideId: alternativeRideId,
+              reason: 'No ride ID found'
+            }
           });
         }
         return;
@@ -209,6 +215,9 @@ const FetchingRide = () => {
 
       // Import rideRequestAPI dynamically to avoid circular imports
       const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+      
+      // Update the current ride ID state
+      setCurrentRideId(rideId);
       
       // Check the current status of the ride request
       const rideRequest = await rideRequestAPI.getRideRequest(rideId);
@@ -264,10 +273,12 @@ const FetchingRide = () => {
         setIsFetching(false);
         clearInterval(intervalIdRef.current);
         clearTimeout(timeoutIdRef.current);
-        router.push('/booking/RideCancelScreen', { 
-          isFetching: false, 
-          rideId: rideId,
-          reason: 'Ride was cancelled'
+        router.push({
+          pathname: '/booking/RideCancelScreen',
+          params: { 
+            rideId: currentRideId || rideId,
+            reason: 'Ride was cancelled'
+          }
         });
       } else {
         console.log('Still waiting for driver. Current status:', rideRequest.status);
@@ -290,13 +301,15 @@ const FetchingRide = () => {
       clearTimeout(timeoutIdRef.current);
       
       // Navigate to error screen or show error message
-      router.push('/booking/RideCancelScreen', { 
-        isFetching: false, 
-        rideId: rideId,
-        reason: 'Error finding driver'
+      router.push({
+        pathname: '/booking/RideCancelScreen',
+        params: { 
+          rideId: currentRideId || rideId,
+          reason: 'Error finding driver'
+        }
       });
     }
-   }, [rideId, router, fallbackData]);
+   }, [rideId, router, fallbackData, currentRideId]);
 
   useEffect(() => {
     if (!isFetching) return;
@@ -313,10 +326,12 @@ const FetchingRide = () => {
       setIsFetching(false);
       
       // Navigate to cancellation screen with timeout reason
-      router.push('/booking/RideCancelScreen', { 
-        isFetching: false, 
-        rideId: rideId,
-        reason: 'No driver found within 5 minutes'
+      router.push({
+        pathname: '/booking/RideCancelScreen',
+        params: { 
+          rideId: currentRideId || rideId,
+          reason: 'No driver found within 5 minutes'
+        }
       });
     }, 300000); // 5 minutes
 
@@ -324,7 +339,7 @@ const FetchingRide = () => {
       clearInterval(intervalIdRef.current);
       clearTimeout(timeoutIdRef.current);
     };
-  }, [getRideDetails, isFetching, rideId, router]);
+  }, [getRideDetails, isFetching, rideId, router, currentRideId]);
 
   const handlePaymentMethod = (method) => {
     try {
@@ -481,10 +496,27 @@ const FetchingRide = () => {
                 text="Cancel Trip"
                 extraStyle={styles.cancelButton}
                 extraTextStyle={styles.cancelButtonText}
-                onPress={() => router.push('/booking/RideCancelScreen', { 
-                  isFetching: isFetching, 
-                  rideId: rideId 
-                })}
+                onPress={() => {
+                  console.log('Cancel button pressed - currentRideId:', currentRideId);
+                  console.log('Cancel button pressed - rideId:', rideId);
+                  console.log('Cancel button pressed - data:', data);
+                  
+                  const finalRideId = currentRideId || rideId;
+                  console.log('Final rideId for navigation:', finalRideId);
+                  
+                  if (finalRideId) {
+                    router.push({
+                      pathname: '/booking/RideCancelScreen',
+                      params: { 
+                        rideId: finalRideId,
+                        reason: 'User cancelled'
+                      }
+                    });
+                  } else {
+                    console.error('No ride ID available for navigation');
+                    showError('Unable to cancel ride - no ride ID found');
+                  }
+                }}
                 bgColor={{ backgroundColor: '#FFD700' }}
               />
             </View>
