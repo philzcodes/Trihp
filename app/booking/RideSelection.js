@@ -440,7 +440,7 @@ const RideSelection = () => {
     }
   }, [currentRide, calculatePrice, updateRideRequest, vehiclePricing]);
 
-  // Handle confirm ride
+  // Handle confirm ride with auto-matching
   const handleConfirmRide = useCallback(async () => {
     if (!selectedVehicle) {
       Alert.alert('Select Vehicle', 'Please select a vehicle type to continue.');
@@ -448,14 +448,12 @@ const RideSelection = () => {
     }
 
     try {
-      // Update ride status to SEARCHING_DRIVER
-      if (currentRide && currentRide.id) {
-        await updateRideRequest(currentRide.id, {
-          status: 'SEARCHING_DRIVER',
-        });
-      }
-
-      // Prepare ride data for navigation
+      console.log('Starting ride confirmation with auto-matching...');
+      
+      // Import the auto-matching API
+      const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+      
+      // Prepare ride data for auto-matching
       const rideData = {
         id: currentRide.id,
         pickup_latitude: currentRide.pickupLatitude,
@@ -466,11 +464,49 @@ const RideSelection = () => {
         drop_location_name: currentRide.dropOffAddress,
         amount: currentRide.totalFare?.toString() || '25',
         distance: currentRide.estimatedDistance?.toString() || '5.2',
-        payment_type: 'cash' // Default payment type
+        payment_type: 'cash', // Default payment type
+        vehicleType: selectedVehicle.type,
+        totalFare: currentRide.totalFare,
+        estimatedDistance: currentRide.estimatedDistance,
+        estimatedDuration: currentRide.estimatedDuration,
+        riderId: currentRide.riderId,
+        status: 'SEARCHING_DRIVER'
       };
+
+      console.log('RideSelection - Attempting auto-matching for ride:', rideData.id);
+      
+      // Find best drivers and send them notifications
+      try {
+        const notificationResult = await rideRequestAPI.findAndNotifyBestDrivers(rideData.id, {
+          maxDistance: 10, // 10km radius
+          maxWaitTime: 15, // 15 minutes max wait
+          preferredVehicleType: selectedVehicle.type,
+          prioritizeByDistance: true,
+          prioritizeByRating: true,
+          loadBalance: true
+        });
+        
+        console.log('Best drivers found and notified:', notificationResult);
+        
+        if (notificationResult.notifiedDrivers > 0) {
+          console.log(`Ride request sent to ${notificationResult.notifiedDrivers} best drivers`);
+          console.log('Drivers will now receive notifications and can accept the ride');
+        } else {
+          console.log('No suitable drivers found, proceeding with manual search');
+        }
+      } catch (notificationError) {
+        console.log('Failed to find and notify best drivers:', notificationError.message);
+        
+        // Fallback: notify nearby drivers
+        try {
+          await rideRequestAPI.notifyNearbyDrivers(rideData.id);
+          console.log('Fallback: Nearby drivers notified for manual selection');
+        } catch (notifyError) {
+          console.log('Failed to notify drivers:', notifyError.message);
+        }
+      }
       
       console.log('RideSelection - Navigating to FetchingRide with data:', rideData);
-      console.log('RideSelection - Current ride object:', currentRide);
       
       // Navigate to driver search screen with ride data
       router.push({

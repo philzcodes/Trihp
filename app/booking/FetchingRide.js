@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapComponent from '../../components/MapComponent';
+import MatchingStatsComponent from '../../components/MatchingStatsComponent';
 import PaymentModal from '../../components/Modals/PaymentTypeModal';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
@@ -85,6 +86,7 @@ const FetchingRide = () => {
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
   const [isFetching, setIsFetching] = useState(true);
   const [currentRideId, setCurrentRideId] = useState(rideId);
+  const [showMatchingStats, setShowMatchingStats] = useState(false);
   const intervalIdRef = useRef(null);
   const timeoutIdRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -398,6 +400,19 @@ const FetchingRide = () => {
           </View>
         </Pressable>
 
+        {/* Stats Toggle Button */}
+        <Pressable 
+          style={[styles.statsButton, { top: Platform.OS === 'ios' ? 60 : 20 }]} 
+          onPress={() => setShowMatchingStats(!showMatchingStats)}
+        >
+          <View style={styles.statsButtonCircle}>
+            <Ionicons name="stats-chart" size={20} color={Colors.whiteColor} />
+          </View>
+        </Pressable>
+
+        {/* Matching Stats Component */}
+        <MatchingStatsComponent visible={showMatchingStats} />
+
         {/* Bottom Sheet */}
         <BottomSheet
           ref={bottomSheetModalRef}
@@ -597,6 +612,29 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButtonCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  // Stats Button Styles
+  statsButton: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
+  },
+  statsButtonCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,

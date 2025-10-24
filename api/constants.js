@@ -52,6 +52,13 @@ const Constant = {
   rejectRide: 'ride-request',
   getAvailableRideRequests: 'ride-request/available-for-drivers',
   
+  // Auto-matching endpoints
+  autoCreateRide: 'ride-request/auto-create',
+  autoMatchDriver: 'ride-request/auto-match',
+  findAndNotifyDrivers: 'ride-request',
+  notifyDrivers: 'ride-request',
+  getMatchingStats: 'ride-request/matching/stats',
+  
   // Ride endpoints (legacy - keeping for compatibility)
   createRide: 'ride/create',
   getRide: 'ride/get',
