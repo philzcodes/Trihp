@@ -496,7 +496,7 @@ const FetchingRide = () => {
                 text="Cancel Trip"
                 extraStyle={styles.cancelButton}
                 extraTextStyle={styles.cancelButtonText}
-                onPress={() => {
+                onPress={async () => {
                   console.log('Cancel button pressed - currentRideId:', currentRideId);
                   console.log('Cancel button pressed - rideId:', rideId);
                   console.log('Cancel button pressed - data:', data);
@@ -505,13 +505,36 @@ const FetchingRide = () => {
                   console.log('Final rideId for navigation:', finalRideId);
                   
                   if (finalRideId) {
-                    router.push({
-                      pathname: '/booking/RideCancelScreen',
-                      params: { 
-                        rideId: finalRideId,
-                        reason: 'User cancelled'
+                    try {
+                      // Check if ride is already cancelled before navigating
+                      const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+                      const rideRequest = await rideRequestAPI.getRideRequest(finalRideId);
+                      
+                      if (rideRequest.status === 'CANCELLED') {
+                        console.log('Ride is already cancelled, navigating to dashboard');
+                        showError('Ride has already been cancelled');
+                        router.push('/(tabs)/Dashboard');
+                        return;
                       }
-                    });
+                      
+                      router.push({
+                        pathname: '/booking/RideCancelScreen',
+                        params: { 
+                          rideId: finalRideId,
+                          reason: 'User cancelled'
+                        }
+                      });
+                    } catch (error) {
+                      console.error('Error checking ride status:', error);
+                      // Navigate anyway if we can't check status
+                      router.push({
+                        pathname: '/booking/RideCancelScreen',
+                        params: { 
+                          rideId: finalRideId,
+                          reason: 'User cancelled'
+                        }
+                      });
+                    }
                   } else {
                     console.error('No ride ID available for navigation');
                     showError('Unable to cancel ride - no ride ID found');

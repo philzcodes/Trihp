@@ -21,6 +21,7 @@ const RideCancelScreen = () => {
   console.log('RideCancelScreen - Params values:', Object.values(params));
 
   const [loading, setLoading] = useState(false);
+  const [hasAttemptedCancel, setHasAttemptedCancel] = useState(false);
   const reasons = [
     { id: 1, name: 'Driver ask to complete trip offline' },
     { id: 2, name: 'Vehicle arrived different from description in-app' },
@@ -35,6 +36,12 @@ const RideCancelScreen = () => {
 
   const cancelRide = useCallback(async () => {
     try {
+      // Prevent duplicate cancellation attempts
+      if (hasAttemptedCancel) {
+        console.log('Cancellation already attempted, preventing duplicate');
+        return;
+      }
+
       // Try to get rideId from multiple sources
       const finalRideId = rideId || params?.rideId || params?.id;
       
@@ -46,6 +53,7 @@ const RideCancelScreen = () => {
       }
       
       console.log('Using rideId for cancellation:', finalRideId);
+      setHasAttemptedCancel(true); // Mark as attempted
 
       console.log('Canceling ride:', {
         rideId: finalRideId,
@@ -67,13 +75,27 @@ const RideCancelScreen = () => {
       
     } catch (error) {
       console.error('Error cancelling ride:', error);
-      showError('Failed to cancel ride. Please try again.');
+      
+      // Handle "already cancelled" case gracefully
+      if (error.message?.includes('already cancelled') || 
+          error.message?.includes('Ride is already cancelled')) {
+        console.log('Ride was already cancelled, showing success message');
+        showSuccess('Ride has been cancelled');
+        router.push('/(tabs)/Dashboard');
+      } else {
+        showError('Failed to cancel ride. Please try again.');
+        setHasAttemptedCancel(false); // Allow retry for other errors
+      }
     } finally {
       setLoading(false);
     }
-  }, [rideId, router, rideCancelReason, params]);
+  }, [rideId, router, rideCancelReason, params, hasAttemptedCancel]);
 
   const handleCancelRide = () => {
+    if (hasAttemptedCancel || loading) {
+      console.log('Cancellation already in progress or completed');
+      return;
+    }
     setLoading(true);
     cancelRide();
   };
@@ -98,7 +120,13 @@ const RideCancelScreen = () => {
           )}
         />
         <View style={styles.buttonContainer}>
-          <TriphButton text="Cancel Ride" onPress={handleCancelRide} bgColor={{ backgroundColor: Colors.yellow }} loading={loading} />
+            <TriphButton 
+              text={hasAttemptedCancel ? "Ride Cancelled" : "Cancel Ride"} 
+              onPress={handleCancelRide} 
+              bgColor={{ backgroundColor: Colors.yellow }} 
+              loading={loading}
+              disabled={hasAttemptedCancel || loading}
+            />
         </View>
       </View>
     </View>
