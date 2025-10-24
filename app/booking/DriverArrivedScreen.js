@@ -37,9 +37,6 @@ const DriverArrivedScreen = () => {
   }
 
   console.log('DriverArrivedScreen - Received data:', data);
-  console.log('DriverArrivedScreen - Driver info:', data?.driver);
-  console.log('DriverArrivedScreen - Driver name field:', data?.driver?.name);
-  console.log('DriverArrivedScreen - Driver first_name field:', data?.driver?.first_name);
 
   const mapRef = useRef(null);
   const { height } = useWindowDimensions();

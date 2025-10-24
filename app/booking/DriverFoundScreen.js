@@ -116,8 +116,6 @@ const DriverFoundScreen = () => {
   const rideInfo = data?.ride || data?.data || {};
   
   console.log('DriverFoundScreen - Driver info:', driverInfo);
-  console.log('DriverFoundScreen - Driver name field:', driverInfo?.name);
-  console.log('DriverFoundScreen - Driver first_name field:', driverInfo?.first_name);
   console.log('DriverFoundScreen - Ride info:', rideInfo);
   
   const pickupCoordinates = {
