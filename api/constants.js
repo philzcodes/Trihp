@@ -42,6 +42,7 @@ const Constant = {
   getCurrentRideForRider: 'ride-request/rider',
   updateRideStatus: 'ride-request',
   cancelRide: 'ride-request',
+  verifyRide: 'ride-request',
   
   // Pricing endpoints
   calculatePrice: 'ride-request/calculate-price',

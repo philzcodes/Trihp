@@ -16,7 +16,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
 import { Colors, Fonts } from '../../constants';
-import { showWarning } from '../../helper/Toaster';
+import { showWarning, showError } from '../../helper/Toaster';
+import rideRequestAPI from '../../api/rideRequestAPI';
 
 const WaitingForDriverScreen = () => {
   const params = useLocalSearchParams();
@@ -44,9 +45,14 @@ const WaitingForDriverScreen = () => {
   const bottomSheetModalRef = useRef(null);
   const insets = useSafeAreaInsets();
 
-  // Timer state for auto-navigation (e.g., 30 seconds before starting trip)
-  const [timeRemaining, setTimeRemaining] = useState(10);
+  // Timer state for optional auto-navigation (derived from ETA or fallback)
+  const [timeRemaining, setTimeRemaining] = useState(null);
   const timerIntervalRef = useRef(null);
+  const pollingIntervalRef = useRef(null);
+  const [currentRide, setCurrentRide] = useState(null);
+  const [driverInfoState, setDriverInfoState] = useState(null);
+  const [rideInfoState, setRideInfoState] = useState(null);
+  const [eta, setEta] = useState(null);
 
   const snapPoints = useMemo(() => ['50%', '70%'], []);
   const [bottomSheetHeight, setBottomSheetHeight] = useState(0);
@@ -60,9 +66,11 @@ const WaitingForDriverScreen = () => {
 
   console.log('WaitingForDriverScreen - Screen height:', height);
 
-  // Extract driver and ride information
-  const driverInfo = data?.driver || {};
-  const rideInfo = data?.ride || data?.data || {};
+  // Initialize local state from incoming params (or null); we'll poll to keep these up-to-date
+  const initialDriver = data?.driver || null;
+  const initialRide = data?.ride || data?.data || data || null;
+  if (driverInfoState === null) setDriverInfoState(initialDriver || {});
+  if (rideInfoState === null) setRideInfoState(initialRide || {});
   
   const pickupCoordinates = {
     latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
@@ -99,39 +107,126 @@ const WaitingForDriverScreen = () => {
     };
   };
 
-  // Timer effect - counts down and navigates to trip started screen
+  // Polling effect - fetch ride updates (ETA, driver location, status)
   useEffect(() => {
-    timerIntervalRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current);
-          // Navigate to trip started/in progress screen
-          router.push({
-            pathname: '/booking/TripInProgressScreen',
-            params: {
-              data: JSON.stringify(data)
+    const rideId = rideInfoState?.id || rideInfoState?.rideId || rideInfoState?.id || data?.id || data?.ride?.id || data?.rideId;
+
+    const stopPolling = () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+
+    const startPolling = () => {
+      // initial fetch
+      (async () => {
+        try {
+          if (!rideId) return;
+          const r = await rideRequestAPI.getRideRequest(rideId);
+          if (r) {
+            setCurrentRide(r);
+            setDriverInfoState({
+              id: r.driverId,
+              name: r.driverName,
+              phone: r.driverPhone,
+              vehicleNumber: r.driverVehicleNumber,
+              latitude: r.pickupLatitude,
+              longitude: r.pickupLongitude,
+              profile_image: r.driverProfileImage || null,
+            });
+            setRideInfoState(r);
+            if (r.estimatedArrival) setEta(r.estimatedArrival);
+
+            // react to status changes
+            if (r.status === 'DRIVER_ARRIVED' || r.status === 'DRIVER_ARRIVED') {
+              stopPolling();
+              router.push({ pathname: '/booking/DriverArrivedScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
+              return;
             }
-          });
-          return 0;
+
+            if (r.status === 'CANCELLED') {
+              stopPolling();
+              router.push({ pathname: '/booking/RideCancelScreen', params: { rideId: rideId, reason: 'Ride cancelled' } });
+              return;
+            }
+
+            if (r.status === 'TRIP_STARTED') {
+              stopPolling();
+              router.push({ pathname: '/booking/TripInProgressScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
+              return;
+            }
+          }
+        } catch (err) {
+          if (__DEV__) console.log('WaitingForDriverScreen: initial poll error', err);
         }
-        return prev - 1;
-      });
-    }, 1000);
+      })();
+
+      // periodic poll
+      pollingIntervalRef.current = setInterval(async () => {
+        try {
+          if (!rideId) return;
+          const r = await rideRequestAPI.getRideRequest(rideId);
+          if (r) {
+            setCurrentRide(r);
+            setDriverInfoState({
+              id: r.driverId,
+              name: r.driverName,
+              phone: r.driverPhone,
+              vehicleNumber: r.driverVehicleNumber,
+              latitude: r.pickupLatitude,
+              longitude: r.pickupLongitude,
+              profile_image: r.driverProfileImage || null,
+            });
+            setRideInfoState(r);
+            if (r.estimatedArrival) setEta(r.estimatedArrival);
+
+            // status-driven navigation
+            if (r.status === 'DRIVER_ARRIVED') {
+              stopPolling();
+              router.push({ pathname: '/booking/DriverArrivedScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
+            } else if (r.status === 'CANCELLED') {
+              stopPolling();
+              router.push({ pathname: '/booking/RideCancelScreen', params: { rideId: rideId, reason: 'Ride cancelled' } });
+            } else if (r.status === 'TRIP_STARTED') {
+              stopPolling();
+              router.push({ pathname: '/booking/TripInProgressScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
+            }
+          }
+        } catch (err) {
+          if (__DEV__) console.log('WaitingForDriverScreen: poll error', err);
+        }
+      }, 5000);
+    };
+
+    startPolling();
 
     return () => {
+      stopPolling();
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [router, data]);
+  }, [data, router, rideInfoState]);
 
   const handleMessageDriver = () => {
     showWarning('Message functionality coming soon');
   };
 
-  const handleCallDriver = () => {
-    const phoneNumber = driverInfo?.phone_number || driverInfo?.phone || '+1234567890';
-    Linking.openURL(`tel:${phoneNumber}`);
+  const handleCallDriver = async () => {
+    try {
+      const phoneNumber = (driverInfoState?.phone_number || driverInfoState?.phone || driverInfoState?.driverPhone || '+1234567890');
+      const url = `tel:${phoneNumber}`;
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        showWarning('Phone call not supported on this device');
+      }
+    } catch (err) {
+      if (__DEV__) console.log('handleCallDriver error', err);
+      showError('Unable to make a call');
+    }
   };
 
   // Calculate drop off time
@@ -145,32 +240,27 @@ const WaitingForDriverScreen = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  // Safety check for data - provide fallback data if missing
-  if (!data) {
-    console.log('WaitingForDriverScreen - No data received, using fallback data');
-    // Provide fallback data to prevent infinite loading
-    data = {
-      driver: {
-        first_name: 'Micheal Edem',
-        name: 'Micheal Edem',
-        phone_number: '+1234567890',
-        profile_image: null,
-        latitude: 4.8666,
-        longitude: 6.9745,
-      },
-      ride: {
-        pickup_latitude: 4.8666,
-        pickup_longitude: 6.9745,
-        drop_latitude: 4.8670,
-        drop_longitude: 6.9750,
-        amount: '25',
-        distance: '5.2 km',
-        payment_type: 'Cash',
-      }
-    };
-  }
+  // Safety check for data - provide fallback values if missing
+  if (!driverInfoState) setDriverInfoState({
+    first_name: 'Micheal Edem',
+    name: 'Micheal Edem',
+    phone_number: '+1234567890',
+    profile_image: null,
+    latitude: 4.8666,
+    longitude: 6.9745,
+  });
 
-  const driverName = driverInfo?.first_name || driverInfo?.name || 'Micheal Edem';
+  if (!rideInfoState) setRideInfoState({
+    pickup_latitude: 4.8666,
+    pickup_longitude: 6.9745,
+    drop_latitude: 4.8670,
+    drop_longitude: 6.9750,
+    amount: '25',
+    distance: '5.2 km',
+    payment_type: 'Cash',
+  });
+
+  const driverName = driverInfoState?.first_name || driverInfoState?.name || 'Micheal Edem';
 
   return (
     <View style={styles.container}>

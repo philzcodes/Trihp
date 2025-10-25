@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Image,
   Linking,
@@ -16,7 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
-import { showSucess, showWarning } from '../../helper/Toaster';
+import { showError, showSucess, showWarning } from '../../helper/Toaster';
+import useBookingStore from '../../store/bookingStore';
 
 const DriverArrivedScreen = () => {
   const params = useLocalSearchParams();
@@ -57,6 +58,7 @@ const DriverArrivedScreen = () => {
   // Extract driver and ride information
   const driverInfo = data?.driver || {};
   const rideInfo = data?.ride || data?.data || {};
+  const verifyRide = useBookingStore(state => state.verifyRide);
   
   const pickupCoordinates = {
     latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
@@ -103,11 +105,19 @@ const DriverArrivedScreen = () => {
   };
 
   const handleVerifyRide = () => {
-    showSucess('Ride verified! Starting your trip...');
-    // Navigate to trip in progress screen
-    setTimeout(() => {
-      router.push('/booking/WaitingForDriverScreen', { data: data });
-    }, 1500);
+    (async () => {
+      try {
+        await verifyRide();
+        showSucess('Ride verified! Starting your trip...');
+        // Navigate to trip in progress screen
+        setTimeout(() => {
+          router.push('/booking/WaitingForDriverScreen', { data: data });
+        }, 1500);
+      } catch (err) {
+        console.error('DriverArrivedScreen: verifyRide failed', err);
+        showError(err?.message || 'Failed to verify ride');
+      }
+    })();
   };
 
   const handleCancel = () => {

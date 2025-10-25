@@ -132,6 +132,28 @@ const useBookingStore = create((set, get) => ({
     }
   },
 
+  verifyRide: async (verificationCode = null) => {
+    const { rideRequestId } = get();
+    if (!rideRequestId) {
+      throw new Error('No active ride request');
+    }
+
+    set({ loading: true, error: null });
+    try {
+      const payload = verificationCode ? { verificationCode } : {};
+      const response = await rideRequestAPI.verifyRide(rideRequestId, payload);
+      set({
+        currentRide: response,
+        rideStatus: response.status,
+        loading: false,
+      });
+      return response;
+    } catch (error) {
+      set({ error: error.message || 'Failed to verify ride', loading: false });
+      throw error;
+    }
+  },
+
   getActiveRide: async (riderId) => {
     set({ loading: true, error: null });
     try {

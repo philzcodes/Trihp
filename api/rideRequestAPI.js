@@ -223,6 +223,18 @@ export const rideRequestAPI = {
     }
   },
 
+  // Verify ride (rider confirms/verifies the driver/ride)
+  verifyRide: async (rideId, payload = {}) => {
+    try {
+      console.log('Verifying ride:', rideId, payload);
+      const response = await api.post(`${Constant.verifyRide}/${rideId}/verify`, payload);
+      return response.data;
+    } catch (error) {
+      console.error('Verify ride API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get driver matching statistics
   getMatchingStats: async () => {
     try {
