@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Linking,
@@ -14,10 +14,10 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import rideRequestAPI from '../../api/rideRequestAPI';
 import { MapComponent } from '../../components';
 import { Colors, Fonts } from '../../constants';
-import { showWarning, showError } from '../../helper/Toaster';
-import rideRequestAPI from '../../api/rideRequestAPI';
+import { showError, showWarning } from '../../helper/Toaster';
 
 const WaitingForDriverScreen = () => {
   const params = useLocalSearchParams();
