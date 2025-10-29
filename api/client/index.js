@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import Constant from '../constants';
 
 // Request queue and throttling
 class RequestQueue {
@@ -64,14 +65,10 @@ class RequestQueue {
 
 const requestQueue = new RequestQueue();
 
-// API Configuration
+// API Configuration - use single source of truth from constants
 const API_CONFIG = {
-  // Production endpoint (commented out)
-  // baseUrl: 'https://trihp-system-backend.onrender.com/api/trihp/v1',
-  
-  // Development endpoint
-  baseUrl: 'http://192.168.100.243:3000/api/trihp/v1',
-  timeout: 10000,
+  baseUrl: Constant.baseUrl,
+  timeout: 15000,
 };
 
 const api = axios.create({
