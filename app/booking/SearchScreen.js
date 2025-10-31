@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getCurrentToken } from '../../api/client';
@@ -510,13 +511,14 @@ const SearchScreen = ({ route }) => {
   const canCreateRide = originLocation && destinationLocation && originCoordinates && destinationCoordinates;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -746,12 +748,17 @@ const SearchScreen = ({ route }) => {
         )}
 
         <Loader modalVisible={loading} setModalVisible={setLoading} />
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000000',
@@ -761,7 +768,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingTop: Platform.OS === 'ios' ? 10 : 10,
     paddingBottom: 16,
     backgroundColor: '#000000',
   },

@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon3 from 'react-native-vector-icons/MaterialCommunityIcons';
 import rideRequestAPI from '../../api/rideRequestAPI';
 import BackHeader from '../../components/BackHeader';
 import TriphButton from '../../components/TriphButton';
-import { Colors, Fonts, STATUS_BAR_HEIGHT } from '../../constants';
+import { Colors, Fonts } from '../../constants';
 import { showError, showSuccess } from '../../helper/Toaster';
 import useBookingStore from '../../store/bookingStore';
 
@@ -144,44 +145,53 @@ const RideCancelScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: STATUS_BAR_HEIGHT + 20 }]}>
-      <BackHeader title="Ride Query" onPress={() => router.back()} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.container}>
-        <Text style={styles.headerText}>Select the reason </Text>
-        <FlatList
-          data={reasons}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.reasonItem, rideCancelReason?.id === item?.id && styles.selectedReasonItem]}
-              onPress={() => setRideCancelReason(item)}
-            >
-              <Icon3 name={rideCancelReason?.id === item?.id ? 'radiobox-marked' : 'radiobox-blank'} size={22} color={Colors.yellow} />
-              <Text style={styles.reasonText}>{item.name}</Text>
-            </Pressable>
-          )}
-        />
-        <View style={styles.buttonContainer}>
-            <TriphButton 
-              text={hasAttemptedCancel ? "Ride Cancelled" : "Cancel Ride"} 
-              onPress={handleCancelRide} 
-              bgColor={{ backgroundColor: Colors.yellow }} 
-              loading={loading}
-              disabled={hasAttemptedCancel || loading}
-            />
+        <BackHeader title="Ride Query" onPress={() => router.back()} />
+        <View style={styles.content}>
+          <Text style={styles.headerText}>Select the reason </Text>
+          <FlatList
+            data={reasons}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            renderItem={({ item }) => (
+              <Pressable
+                style={[styles.reasonItem, rideCancelReason?.id === item?.id && styles.selectedReasonItem]}
+                onPress={() => setRideCancelReason(item)}
+              >
+                <Icon3 name={rideCancelReason?.id === item?.id ? 'radiobox-marked' : 'radiobox-blank'} size={22} color={Colors.yellow} />
+                <Text style={styles.reasonText}>{item.name}</Text>
+              </Pressable>
+            )}
+          />
+          <View style={styles.buttonContainer}>
+              <TriphButton 
+                text={hasAttemptedCancel ? "Ride Cancelled" : "Cancel Ride"} 
+                onPress={handleCancelRide} 
+                bgColor={{ backgroundColor: Colors.yellow }} 
+                loading={loading}
+                disabled={hasAttemptedCancel || loading}
+              />
+          </View>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default RideCancelScreen;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.blackColor,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.blackColor,
+  },
+  content: {
+    flex: 1,
   },
   headerText: {
     ...Fonts.GrandMedium,

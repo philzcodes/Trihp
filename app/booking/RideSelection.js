@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { clearRequestQueue, getQueueStats } from '../../api/client';
@@ -730,8 +731,8 @@ const RideSelection = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {/* Map View */}
       <View style={styles.mapContainer}>
@@ -855,12 +856,16 @@ const RideSelection = () => {
         </View>
       )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000000',

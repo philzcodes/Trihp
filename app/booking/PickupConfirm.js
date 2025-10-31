@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
@@ -163,7 +164,8 @@ const PickupConfirm = () => {
 
   try {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
         {/* Map Component */}
       <MapComponent
         ref={mapRef}
@@ -200,7 +202,7 @@ const PickupConfirm = () => {
 
       {/* Back Button */}
       <Pressable 
-        style={[styles.backButton, { top: Platform.OS === 'ios' ? 60 : 20 }]} 
+        style={[styles.backButton, { top: Platform.OS === 'ios' ? 10 : 10 }]} 
         onPress={() => router.back()}
       >
         <View style={styles.backButtonCircle}>
@@ -254,7 +256,8 @@ const PickupConfirm = () => {
 
       {/* Loader */}
       <Loader modalVisible={loading} setModalVisible={setLoading} />
-    </View>
+      </View>
+    </SafeAreaView>
   );
   } catch (error) {
     console.error('PickupConfirm: Error rendering component:', error);
@@ -283,6 +286,10 @@ const PickupConfirm = () => {
 export default PickupConfirm;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.whiteColor,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.whiteColor,

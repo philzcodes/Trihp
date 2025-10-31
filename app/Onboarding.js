@@ -1,4 +1,3 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, BackHandler, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -84,10 +83,10 @@ const Onboarding = () => {
                 <Text style={styles.buttonText}>Login</Text>
               </TouchableOpacity>
               </View>
-            <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10}}>
+            {/* <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10}}>
               <Text style={styles.subText}>Drive & Earn with Trihp </Text> 
               <MaterialIcons name="keyboard-double-arrow-right" size={24} color="black" />
-            </View>
+            </View> */}
           </View>
         </View>
       </ImageBackground>
@@ -101,7 +100,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     height: '100%',
-    backgroundColor: Colors.whiteColor,
+    backgroundColor: Colors.blackColor,
   },
   backgroundImage: {
     width: '100%',
