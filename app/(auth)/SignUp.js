@@ -160,30 +160,31 @@ const Register = () => {
   });
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Validation errors state
+  const [errors, setErrors] = useState({
+    phoneNumber: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: ''
+  });
+  
+  // Track if fields have been touched
+  const [touched, setTouched] = useState({
+    phoneNumber: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+    firstName: false,
+    lastName: false
+  });
 
   const onSubmit = async () => {
-    if (!phoneNumber || !email || !password || !confirmPassword || !firstName || !lastName) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    if (phoneNumber.length < 9) {
-      Alert.alert('Error', 'Please enter a valid phone number');
-      return;
-    }
-
-    if (!Constant.emailValidationRegx.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (!Constant.passwordValidation.test(password)) {
-      Alert.alert('Error', 'Password must be 8-16 characters with at least one special character');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    // Validate all fields
+    if (!validateAllFields()) {
+      Alert.alert('Error', 'Please fix the validation errors before continuing');
       return;
     }
 
@@ -261,6 +262,178 @@ const Register = () => {
     setShowCountryModal(false);
   };
 
+  // Validation functions
+  const validatePhoneNumber = (value) => {
+    if (!value) {
+      return 'Phone number is required';
+    }
+    if (value.length < 9) {
+      return 'Phone number must be at least 9 digits';
+    }
+    if (!/^\d+$/.test(value)) {
+      return 'Phone number must contain only numbers';
+    }
+    return '';
+  };
+
+  const validateEmail = (value) => {
+    if (!value) {
+      return 'Email is required';
+    }
+    if (!Constant.emailValidationRegx.test(value)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  const validatePassword = (value) => {
+    if (!value) {
+      return 'Password is required';
+    }
+    if (!Constant.passwordValidation.test(value)) {
+      return 'Password must be 8-16 characters with at least one special character';
+    }
+    return '';
+  };
+
+  const validateConfirmPassword = (value, passwordValue) => {
+    if (!value) {
+      return 'Please confirm your password';
+    }
+    if (value !== passwordValue) {
+      return 'Passwords do not match';
+    }
+    return '';
+  };
+
+  const validateName = (value, fieldName) => {
+    if (!value) {
+      return `${fieldName} is required`;
+    }
+    if (value.trim().length < 2) {
+      return `${fieldName} must be at least 2 characters`;
+    }
+    if (!/^[a-zA-Z\s'-]+$/.test(value.trim())) {
+      return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
+    }
+    return '';
+  };
+
+  // Update error for a specific field
+  const updateError = (field, error) => {
+    setErrors(prev => ({ ...prev, [field]: error }));
+  };
+
+  // Handle field changes with validation - validate while typing
+  const handlePhoneNumberChange = (value) => {
+    setPhoneNumber(value);
+    // Mark as touched and validate immediately
+    if (!touched.phoneNumber) {
+      setTouched(prev => ({ ...prev, phoneNumber: true }));
+    }
+    updateError('phoneNumber', validatePhoneNumber(value));
+  };
+
+  const handleEmailChange = (value) => {
+    setEmail(value);
+    // Mark as touched and validate immediately
+    if (!touched.email) {
+      setTouched(prev => ({ ...prev, email: true }));
+    }
+    updateError('email', validateEmail(value));
+  };
+
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+    // Mark as touched and validate immediately
+    if (!touched.password) {
+      setTouched(prev => ({ ...prev, password: true }));
+    }
+    updateError('password', validatePassword(value));
+    // Also validate confirm password if it's been touched
+    if (touched.confirmPassword && confirmPassword) {
+      updateError('confirmPassword', validateConfirmPassword(confirmPassword, value));
+    }
+  };
+
+  const handleConfirmPasswordChange = (value) => {
+    setConfirmPassword(value);
+    // Mark as touched and validate immediately
+    if (!touched.confirmPassword) {
+      setTouched(prev => ({ ...prev, confirmPassword: true }));
+    }
+    updateError('confirmPassword', validateConfirmPassword(value, password));
+  };
+
+  const handleFirstNameChange = (value) => {
+    setFirstName(value);
+    // Mark as touched and validate immediately
+    if (!touched.firstName) {
+      setTouched(prev => ({ ...prev, firstName: true }));
+    }
+    updateError('firstName', validateName(value, 'First name'));
+  };
+
+  const handleLastNameChange = (value) => {
+    setLastName(value);
+    // Mark as touched and validate immediately
+    if (!touched.lastName) {
+      setTouched(prev => ({ ...prev, lastName: true }));
+    }
+    updateError('lastName', validateName(value, 'Last name'));
+  };
+
+  // Mark field as touched when user leaves it
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Validate on blur
+    switch (field) {
+      case 'phoneNumber':
+        updateError('phoneNumber', validatePhoneNumber(phoneNumber));
+        break;
+      case 'email':
+        updateError('email', validateEmail(email));
+        break;
+      case 'password':
+        updateError('password', validatePassword(password));
+        break;
+      case 'confirmPassword':
+        updateError('confirmPassword', validateConfirmPassword(confirmPassword, password));
+        break;
+      case 'firstName':
+        updateError('firstName', validateName(firstName, 'First name'));
+        break;
+      case 'lastName':
+        updateError('lastName', validateName(lastName, 'Last name'));
+        break;
+    }
+  };
+
+  // Validate all fields before submission
+  const validateAllFields = () => {
+    const newErrors = {
+      phoneNumber: validatePhoneNumber(phoneNumber),
+      email: validateEmail(email),
+      password: validatePassword(password),
+      confirmPassword: validateConfirmPassword(confirmPassword, password),
+      firstName: validateName(firstName, 'First name'),
+      lastName: validateName(lastName, 'Last name')
+    };
+    
+    setErrors(newErrors);
+    setTouched({
+      phoneNumber: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+      firstName: true,
+      lastName: true
+    });
+    
+    return !Object.values(newErrors).some(error => error !== '');
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <BackButton onPress={() => router.back()} />
@@ -274,7 +447,10 @@ const Register = () => {
         
         {/* Phone Number Input with Country Selector */}
         <View style={styles.inputWrapper}>
-          <View style={styles.phoneInputContainer}>
+          <View style={[
+            styles.phoneInputContainer,
+            errors.phoneNumber && styles.inputError
+          ]}>
             <Pressable 
               style={styles.flagContainer}
               onPress={handleCountrySelect}
@@ -291,37 +467,55 @@ const Register = () => {
               <Text style={styles.countryCode}>+{selectedCountry.callingCode}</Text>
               <TextInput
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                onChangeText={handlePhoneNumberChange}
+                onBlur={() => handleBlur('phoneNumber')}
                 placeholder="Enter Phone Number"
                 placeholderTextColor={Colors.grey8 || '#666'}
-                style={styles.phoneInput}
+                style={[
+                  styles.phoneInput,
+                  errors.phoneNumber && styles.inputError
+                ]}
                 keyboardType="phone-pad"
               />
             </View>
           </View>
+          {errors.phoneNumber ? (
+            <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+          ) : null}
         </View>
 
         {/* Email Input */}
         <View style={styles.inputWrapper}>
           <TextInput
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
+            onBlur={() => handleBlur('email')}
             placeholder="Enter email"
             placeholderTextColor={Colors.grey8 || '#666'}
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.email && styles.inputError
+            ]}
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {errors.email ? (
+            <Text style={styles.errorText}>{errors.email}</Text>
+          ) : null}
         </View>
 
         {/* Password Input */}
         <View style={styles.inputWrapper}>
           <TextInput
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
+            onBlur={() => handleBlur('password')}
             placeholder="Password"
             placeholderTextColor={Colors.grey8 || '#666'}
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.password && styles.inputError
+            ]}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
           />
@@ -335,16 +529,23 @@ const Register = () => {
               color={Colors.grey8 || '#999'} 
             />
           </Pressable>
+          {errors.password ? (
+            <Text style={styles.errorText}>{errors.password}</Text>
+          ) : null}
         </View>
 
         {/* Confirm Password Input */}
         <View style={styles.inputWrapper}>
           <TextInput
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={handleConfirmPasswordChange}
+            onBlur={() => handleBlur('confirmPassword')}
             placeholder="Confirm Password"
             placeholderTextColor={Colors.grey8 || '#666'}
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.confirmPassword && styles.inputError
+            ]}
             secureTextEntry={!showConfirmPassword}
             autoCapitalize="none"
           />
@@ -358,17 +559,27 @@ const Register = () => {
               color={Colors.grey8 || '#999'} 
             />
           </Pressable>
+          {errors.confirmPassword ? (
+            <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+          ) : null}
         </View>
 
         {/* First Name Input */}
         <View style={styles.inputWrapper}>
           <TextInput
             value={firstName}
-            onChangeText={setFirstName}
+            onChangeText={handleFirstNameChange}
+            onBlur={() => handleBlur('firstName')}
             placeholder="First Name"
             placeholderTextColor={Colors.grey8 || '#666'}
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.firstName && styles.inputError
+            ]}
           />
+          {errors.firstName ? (
+            <Text style={styles.errorText}>{errors.firstName}</Text>
+          ) : null}
         </View>
 
         {/* Middle Name Input */}
@@ -386,11 +597,18 @@ const Register = () => {
         <View style={styles.inputWrapper}>
           <TextInput
             value={lastName}
-            onChangeText={setLastName}
+            onChangeText={handleLastNameChange}
+            onBlur={() => handleBlur('lastName')}
             placeholder="Last Name"
             placeholderTextColor={Colors.grey8 || '#666'}
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.lastName && styles.inputError
+            ]}
           />
+          {errors.lastName ? (
+            <Text style={styles.errorText}>{errors.lastName}</Text>
+          ) : null}
         </View>
 
         {/* Gender Selection */}
@@ -563,6 +781,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     color: Colors.whiteColor || '#FFF',
     fontSize: 16,
+  },
+  inputError: {
+    borderWidth: 1,
+    borderColor: '#FF4444',
+  },
+  errorText: {
+    ...Fonts.Regular,
+    fontSize: 12,
+    color: '#FF4444',
+    marginTop: 5,
+    marginLeft: 20,
   },
   eyeIcon: {
     position: 'absolute',
