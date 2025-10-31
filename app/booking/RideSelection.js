@@ -336,12 +336,47 @@ const RideSelection = () => {
     return () => clearTimeout(timeoutId);
   }, [params.rideId, params.pickupAddress, params.destinationAddress, params.estimatedDistance, params.distance, params.estimatedDuration, params.totalFare, currentRide?.id, setCurrentRide]);
 
-  // Calculate pricing when coordinates are ready
+  // Initialize pricing from ride data if available (reduces API calls)
   useEffect(() => {
-    if (coordinatesReady && parsedCoordinates.origin && parsedCoordinates.destination) {
-      calculateVehiclePricing();
+    if (rideData && rideData.vehicleType && rideData.totalFare) {
+      setVehiclePricing(prev => {
+        // Only set if not already set to avoid overwriting API results
+        if (!prev[rideData.vehicleType]) {
+          return {
+            ...prev,
+            [rideData.vehicleType]: {
+              totalFare: rideData.totalFare,
+              baseFare: rideData.baseFare,
+              perKMCharge: rideData.perKMCharge,
+              perMinuteCharge: rideData.perMinuteCharge,
+              estimatedDistance: rideData.estimatedDistance,
+              estimatedDuration: rideData.estimatedDuration,
+            }
+          };
+        }
+        return prev;
+      });
     }
-  }, [coordinatesReady, parsedCoordinates.origin, parsedCoordinates.destination, calculateVehiclePricing]);
+  }, [rideData?.vehicleType, rideData?.totalFare]);
+
+  // Calculate pricing lazily - only for visible/main vehicles first, rest on-demand
+  // This prevents making 6 API calls immediately when screen loads
+  const [pricingCalculated, setPricingCalculated] = useState(false);
+  
+  // Only calculate pricing for main 3 vehicles on load (not all 6)
+  // This reduces initial API calls from 6 to 3
+  useEffect(() => {
+    if (coordinatesReady && parsedCoordinates.origin && parsedCoordinates.destination && !pricingCalculated) {
+      // Delay initial pricing calculation and only calculate for main vehicles
+      const timer = setTimeout(() => {
+        const mainVehicleTypes = vehicles.map(v => v.type); // Only first 3 vehicles
+        calculateVehiclePricing(mainVehicleTypes);
+        setPricingCalculated(true);
+      }, 800); // Slightly longer delay to reduce initial burst
+      
+      return () => clearTimeout(timer);
+    }
+  }, [coordinatesReady, parsedCoordinates.origin, parsedCoordinates.destination, pricingCalculated]);
 
   // Retry pricing calculation
   const retryPricingCalculation = useCallback(async () => {
@@ -365,8 +400,8 @@ const RideSelection = () => {
     await calculateVehiclePricing();
   }, [retryCount, calculateVehiclePricing]);
 
-  // Calculate pricing for all vehicles using API
-  const calculateVehiclePricing = useCallback(async () => {
+  // Calculate pricing for vehicles - optimized to reduce API calls
+  const calculateVehiclePricing = useCallback(async (vehicleTypesToCalculate = null) => {
     if (!parsedCoordinates.origin || !parsedCoordinates.destination) {
       console.log('Coordinates not ready for pricing calculation');
       return;
@@ -374,10 +409,13 @@ const RideSelection = () => {
 
     try {
       setPricingLoading(true);
-      console.log('Calculating pricing for all vehicles...');
-
+      
+      // If specific vehicles requested, only calculate those
+      // Otherwise calculate all (but this should be rare)
       const allVehicles = [...vehicles, ...moreVehicles];
-      const vehicleTypes = allVehicles.map(v => v.type);
+      const vehicleTypes = vehicleTypesToCalculate || allVehicles.map(v => v.type);
+      
+      console.log(`Calculating pricing for ${vehicleTypes.length} vehicle(s)...`);
 
       const pricingParams = {
         pickupLatitude: parsedCoordinates.origin.latitude,
@@ -419,13 +457,15 @@ const RideSelection = () => {
         );
       }
       
-      // Set fallback pricing for all vehicles
-      const fallbackPricing = {};
-      [...vehicles, ...moreVehicles].forEach(vehicle => {
-        fallbackPricing[vehicle.type] = {
-          totalFare: PricingHelper.getFallbackPrice(vehicle.type, parsedCoordinates.distance || 5),
-          error: 'Using fallback pricing',
-        };
+      // Set fallback pricing only for requested vehicles
+      const fallbackPricing = { ...vehiclePricing }; // Keep existing pricing
+      vehicleTypes.forEach(vehicleType => {
+        if (!fallbackPricing[vehicleType]) {
+          fallbackPricing[vehicleType] = {
+            totalFare: PricingHelper.getFallbackPrice(vehicleType, parsedCoordinates.distance || 5),
+            error: 'Using fallback pricing',
+          };
+        }
       });
       setVehiclePricing(fallbackPricing);
     } finally {
@@ -448,67 +488,32 @@ const RideSelection = () => {
     return PricingHelper.getFallbackPrice(vehicle.type, distance);
   }, [vehiclePricing, rideData]);
 
-  // Handle vehicle selection
+  // Handle vehicle selection - optimized to reduce API calls
   const handleVehicleSelection = useCallback(async (vehicle) => {
     try {
       console.log('Vehicle selected:', vehicle);
-      console.log('Current ride:', currentRide);
-      console.log('Ride data:', rideData);
-      console.log('Params rideId:', params.rideId);
       
       setSelectedVehicle(vehicle);
       
-      // Get ride ID from multiple possible sources
-      const rideId = currentRide?.id || rideData?.id || params.rideId;
-      
-      if (!rideId) {
-        console.error('No ride ID found. Cannot update ride request.');
-        Alert.alert(
-          'Error',
-          'No active ride found. Please go back and create a new ride request.',
-          [
-            {
-              text: 'Go Back',
-              onPress: () => router.back(),
-            }
-          ]
-        );
-        return;
+      // Check if pricing exists for this vehicle, if not calculate it on-demand
+      if (!vehiclePricing[vehicle.type] && !pricingLoading) {
+        console.log(`Pricing not found for ${vehicle.type}, calculating on-demand...`);
+        try {
+          await calculateVehiclePricing([vehicle.type]);
+        } catch (pricingError) {
+          console.warn('Failed to calculate pricing on-demand, using fallback');
+        }
       }
       
-      // Get pricing data for the selected vehicle
-      const pricing = vehiclePricing[vehicle.type];
-      const price = calculatePrice(vehicle);
+      // Don't update ride request immediately - only update on confirmation
+      // This prevents multiple API calls when user clicks different vehicles
+      console.log('Vehicle selection updated. Ride will be updated on confirmation.');
       
-      const updateData = {
-        vehicleType: vehicle.type,
-        totalFare: price,
-        ...(pricing && !pricing.error && {
-          baseFare: pricing.baseFare,
-          perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
-          perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
-          surgeMultiplier: pricing.surgeMultiplier,
-          tax: pricing.tax,
-          bookingFee: pricing.bookingFee,
-        }),
-      };
-      
-      console.log('Updating ride request with data:', updateData);
-      console.log('Using ride ID:', rideId);
-      
-      // Update the ride request with selected vehicle type and pricing
-      const response = await updateRideRequest(rideId, updateData);
-      console.log('Ride request updated successfully:', response);
-      
-      // Update the store with the updated ride
-      if (response) {
-        setCurrentRide(response?.data || response);
-      }
     } catch (error) {
-      console.error('Error updating ride request:', error);
-      Alert.alert('Error', 'Failed to update ride request. Please try again.');
+      console.error('Error handling vehicle selection:', error);
+      // Don't show alert for selection - only for confirmation
     }
-  }, [currentRide, rideData, params.rideId, calculatePrice, updateRideRequest, vehiclePricing, setCurrentRide, router]);
+  }, [vehiclePricing, pricingLoading, calculateVehiclePricing]);
 
   // Handle confirm ride with auto-matching
   const handleConfirmRide = useCallback(async () => {
@@ -520,34 +525,72 @@ const RideSelection = () => {
     try {
       console.log('Starting ride confirmation with auto-matching...');
       
+      // Get ride ID from multiple possible sources
+      const rideId = currentRide?.id || rideData?.id || params.rideId;
+      
+      if (!rideId) {
+        Alert.alert('Error', 'No active ride found. Please go back and create a new ride request.');
+        return;
+      }
+      
+      // Get pricing data for the selected vehicle
+      const pricing = vehiclePricing[selectedVehicle.type];
+      const price = calculatePrice(selectedVehicle);
+      
+      // Update ride request with selected vehicle and pricing BEFORE auto-matching
+      console.log('Updating ride request with selected vehicle and pricing...');
+      
+      const updateData = {
+        vehicleType: selectedVehicle.type,
+        totalFare: price,
+        ...(pricing && !pricing.error && {
+          baseFare: pricing.baseFare,
+          perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
+          perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
+          surgeMultiplier: pricing.surgeMultiplier,
+          tax: pricing.tax,
+          bookingFee: pricing.bookingFee,
+        }),
+      };
+      
+      // Update the ride request first
+      const updatedRide = await updateRideRequest(rideId, updateData);
+      console.log('Ride request updated successfully:', updatedRide);
+      
+      // Update store with updated ride
+      const rideInfo = updatedRide?.data || updatedRide || currentRide || rideData;
+      if (rideInfo) {
+        setCurrentRide(rideInfo);
+      }
+      
       // Import the auto-matching API
       const { rideRequestAPI } = await import('../../api/rideRequestAPI');
       
-      // Prepare ride data for auto-matching
-      const rideData = {
-        id: currentRide.id,
-        pickup_latitude: currentRide.pickupLatitude,
-        pickup_longitude: currentRide.pickupLongitude,
-        pickup_location_name: currentRide.pickupAddress,
-        drop_latitude: currentRide.dropOffLatitude,
-        drop_longitude: currentRide.dropOffLongitude,
-        drop_location_name: currentRide.dropOffAddress,
-        amount: currentRide.totalFare?.toString() || '25',
-        distance: currentRide.estimatedDistance?.toString() || '5.2',
+      // Prepare ride data for auto-matching (use updated ride data)
+      const finalRideData = {
+        id: rideId,
+        pickup_latitude: rideInfo.pickupLatitude || rideInfo.pickup_latitude,
+        pickup_longitude: rideInfo.pickupLongitude || rideInfo.pickup_longitude,
+        pickup_location_name: rideInfo.pickupAddress || rideInfo.pickup_location_name,
+        drop_latitude: rideInfo.dropOffLatitude || rideInfo.drop_latitude,
+        drop_longitude: rideInfo.dropOffLongitude || rideInfo.drop_longitude,
+        drop_location_name: rideInfo.dropOffAddress || rideInfo.drop_location_name,
+        amount: price?.toString() || rideInfo.totalFare?.toString() || '25',
+        distance: rideInfo.estimatedDistance?.toString() || '5.2',
         payment_type: 'cash', // Default payment type
         vehicleType: selectedVehicle.type,
-        totalFare: currentRide.totalFare,
-        estimatedDistance: currentRide.estimatedDistance,
-        estimatedDuration: currentRide.estimatedDuration,
-        riderId: currentRide.riderId,
+        totalFare: price || rideInfo.totalFare,
+        estimatedDistance: rideInfo.estimatedDistance,
+        estimatedDuration: rideInfo.estimatedDuration,
+        riderId: rideInfo.riderId,
         status: 'SEARCHING_DRIVER'
       };
 
-      console.log('RideSelection - Attempting auto-matching for ride:', rideData.id);
+      console.log('RideSelection - Attempting auto-matching for ride:', rideId);
       
-      // Find best drivers and send them notifications
+      // Find best drivers and send them notifications (with error handling to prevent rate limit issues)
       try {
-        const notificationResult = await rideRequestAPI.findAndNotifyBestDrivers(rideData.id, {
+        const notificationResult = await rideRequestAPI.findAndNotifyBestDrivers(rideId, {
           maxDistance: 10, // 10km radius
           maxWaitTime: 15, // 15 minutes max wait
           preferredVehicleType: selectedVehicle.type,
@@ -558,38 +601,29 @@ const RideSelection = () => {
         
         console.log('Best drivers found and notified:', notificationResult);
         
-        if (notificationResult.notifiedDrivers > 0) {
+        if (notificationResult?.notifiedDrivers > 0) {
           console.log(`Ride request sent to ${notificationResult.notifiedDrivers} best drivers`);
-          console.log('Drivers will now receive notifications and can accept the ride');
-        } else {
-          console.log('No suitable drivers found, proceeding with manual search');
         }
       } catch (notificationError) {
-        console.log('Failed to find and notify best drivers:', notificationError.message);
-        
-        // Fallback: notify nearby drivers
-        try {
-          await rideRequestAPI.notifyNearbyDrivers(rideData.id);
-          console.log('Fallback: Nearby drivers notified for manual selection');
-        } catch (notifyError) {
-          console.log('Failed to notify drivers:', notifyError.message);
-        }
+        console.warn('Failed to find and notify best drivers:', notificationError.message);
+        // Don't block navigation - just log the error
+        // The ride is already created, driver matching can happen in background
       }
       
-      console.log('RideSelection - Navigating to FetchingRide with data:', rideData);
+      console.log('RideSelection - Navigating to FetchingRide with data:', finalRideData);
       
       // Navigate to driver search screen with ride data
       router.push({
         pathname: '/booking/FetchingRide',
         params: { 
-          info: JSON.stringify(rideData)
+          info: JSON.stringify(finalRideData)
         }
       });
     } catch (error) {
       console.error('Error confirming ride:', error);
       Alert.alert('Error', 'Failed to confirm ride. Please try again.');
     }
-  }, [selectedVehicle, currentRide, updateRideRequest, router]);
+  }, [selectedVehicle, currentRide, rideData, params.rideId, calculatePrice, updateRideRequest, vehiclePricing, setCurrentRide, router]);
 
   const originCoordinates = parsedCoordinates.origin || {
     latitude: 4.8666,
