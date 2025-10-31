@@ -13,7 +13,13 @@ export const authAPI = {
       });
       return response.data;
     } catch (error) {
-      throw error.response?.data || error.message;
+      // Preserve the full error structure for better error handling
+      const errorResponse = error.response?.data || { message: error.message };
+      const enhancedError = new Error();
+      enhancedError.message = errorResponse.message || errorResponse.error || error.message;
+      enhancedError.response = error.response;
+      enhancedError.responseData = errorResponse;
+      throw enhancedError;
     }
   },
 

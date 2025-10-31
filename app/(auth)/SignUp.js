@@ -113,6 +113,32 @@ const countries = [
   { code: 'TG', callingCode: '228', flag: '🇹🇬', name: 'Togo' },
 ];
 
+// Helper function to format error messages (handles arrays and objects)
+const formatErrorMessage = (error) => {
+  if (!error) return 'An unexpected error occurred.';
+  
+  // If error is an array, join the messages
+  if (Array.isArray(error)) {
+    return error.join('\n');
+  }
+  
+  // If error is an object with message property
+  if (typeof error === 'object' && error.message) {
+    if (Array.isArray(error.message)) {
+      return error.message.join('\n');
+    }
+    return error.message;
+  }
+  
+  // If error is a string
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  // Fallback
+  return 'An unexpected error occurred. Please try again.';
+};
+
 const Register = () => {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -163,11 +189,11 @@ const Register = () => {
     try {
       setLoading(true);
       
+      // Build userData object, only including middleName if it has a valid value
       const userData = {
-        firstName: firstName,
-        lastName: lastName,
-        middleName: middleName || '',
-        email: email,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
         password: password,
         phoneNumber: `+${selectedCountry.callingCode}${phoneNumber}`,
         userType: 'RIDER', // Default to RIDER for this app
@@ -175,6 +201,11 @@ const Register = () => {
         gender: gender.toUpperCase(),
         agreedToTerms: true
       };
+
+      // Only add middleName if it's not empty
+      if (middleName && middleName.trim().length > 0) {
+        userData.middleName = middleName.trim();
+      }
 
       const response = await authAPI.register(userData);
       
@@ -192,20 +223,31 @@ const Register = () => {
           }
         });
       } else {
-        Alert.alert('Error', response.message || 'Registration failed. Please try again.');
+        // Handle error response from API
+        const errorMessage = formatErrorMessage(response.message || 'Registration failed. Please try again.');
+        Alert.alert('Error', errorMessage);
       }
       
     } catch (error) {
       setLoading(false);
       console.error('Registration error:', error);
       
-      if (error.message) {
-        Alert.alert('Error', error.message);
-      } else if (error.error) {
-        Alert.alert('Error', error.error);
-      } else {
-        Alert.alert('Error', 'Registration failed. Please try again.');
+      // Extract error message from error object
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error?.response?.data) {
+        // Error from axios response
+        const errorData = error.response.data;
+        errorMessage = formatErrorMessage(errorData.message || errorData.error || errorMessage);
+      } else if (error?.message) {
+        // Direct error message
+        errorMessage = formatErrorMessage(error.message);
+      } else if (typeof error === 'string') {
+        // String error
+        errorMessage = formatErrorMessage(error);
       }
+      
+      Alert.alert('Registration Error', errorMessage);
     }
   };
 

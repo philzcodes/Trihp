@@ -10,6 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map.",
+        "NSLocationAlwaysUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map."
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyDcw1UIsLcO8Gsp4X3txf0T8bmg1hiU5go"
       }
@@ -24,6 +29,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.philzcodes.Trihp",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDcw1UIsLcO8Gsp4X3txf0T8bmg1hiU5go"
@@ -48,7 +59,22 @@
           }
         }
       ],
-      "expo-maps"
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUseUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map.",
+          "locationWhenInUseUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "targetSdkVersion": 35,
+            "compileSdkVersion": 35
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -57,7 +83,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "640e358e-ccf4-4494-9976-8f73a3425aa1"
+        "projectId": "d2303d55-03ee-4c58-8ea8-e9619e518b5d"
       }
     }
   }

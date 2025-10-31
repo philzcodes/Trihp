@@ -2,9 +2,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tabs
       screenOptions={{
@@ -15,7 +18,7 @@ export default function TabLayout() {
           // borderTopWidth: 1,
           // borderTopColor: Colors.whiteColor,
           height: 80,
-          paddingBottom: 10,
+          paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
           elevation: 0,
           shadowOpacity: 0,
