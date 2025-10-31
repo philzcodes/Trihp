@@ -24,24 +24,25 @@ const Onboarding = () => {
     outputRange: [0, -width * 1.2], // Slide completely off screen
   });
 
-  const animateCarAndNavigate = (route) => {
-    Animated.timing(carAnimationValue, {
-      toValue: 1,
-      duration: 1300, // Animation duration in milliseconds
-      useNativeDriver: true,
-    }).start(() => {
-      router.push(route);
-      // Reset animation after navigation
-      carAnimationValue.setValue(0);
-    });
-  };
+  // Disabled animation for now - navigate directly
+  // const animateCarAndNavigate = (route) => {
+  //   Animated.timing(carAnimationValue, {
+  //     toValue: 1,
+  //     duration: 1300, // Animation duration in milliseconds
+  //     useNativeDriver: true,
+  //   }).start(() => {
+  //     router.push(route);
+  //     // Reset animation after navigation
+  //     carAnimationValue.setValue(0);
+  //   });
+  // };
 
   const handleRegisterPress = () => {
-    animateCarAndNavigate('/SignUp');
+    router.push('/SignUp');
   };
 
   const handleLoginPress = () => {
-    animateCarAndNavigate('/Login');
+    router.push('/Login');
   };
 
   return (
