@@ -73,11 +73,11 @@ const FetchingRide = () => {
     data = null;
   }
   
-  // Debug logging
-  console.log('FetchingRide - Received params:', params);
-  console.log('FetchingRide - Parsed data:', data);
-  console.log('FetchingRide - Data is null/undefined:', !data);
-  console.log('FetchingRide - Will use fallback data:', !data);
+  // Debug logging (only in development)
+  if (__DEV__) {
+    console.log('FetchingRide - Received params:', params);
+    console.log('FetchingRide - Parsed data:', data);
+  }
   
   const rideId = data?.id;
   const mapRef = useRef(null);

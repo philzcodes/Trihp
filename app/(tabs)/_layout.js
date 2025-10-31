@@ -18,10 +18,11 @@ export default function TabLayout() {
           // borderTopWidth: 1,
           // borderTopColor: Colors.whiteColor,
           height: 80,
-          paddingBottom: Math.max(insets.bottom, 10),
+          paddingBottom: 10,
           paddingTop: 10,
           elevation: 0,
           shadowOpacity: 0,
+          marginBottom: Math.max(insets.bottom, 0),
         },
         tabBarBackground: () => (
           <LinearGradient

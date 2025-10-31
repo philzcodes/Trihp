@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Linking,
@@ -59,6 +59,18 @@ const DriverArrivedScreen = () => {
   const driverInfo = data?.driver || {};
   const rideInfo = data?.ride || data?.data || {};
   const verifyRide = useBookingStore(state => state.verifyRide);
+  const setRideRequestId = useBookingStore(state => state.setRideRequestId);
+  const setCurrentRide = useBookingStore(state => state.setCurrentRide);
+  
+  const rideId = rideInfo?.id;
+  
+  // Set ride ID in store when screen loads to ensure verifyRide works
+  useEffect(() => {
+    if (rideId) {
+      setRideRequestId(rideId);
+      setCurrentRide(rideInfo);
+    }
+  }, [rideId, rideInfo, setRideRequestId, setCurrentRide]);
   
   const pickupCoordinates = {
     latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
@@ -107,11 +119,12 @@ const DriverArrivedScreen = () => {
   const handleVerifyRide = () => {
     (async () => {
       try {
-        await verifyRide();
+        // Pass rideId to verifyRide in case store doesn't have it
+        await verifyRide(null, rideId);
         showSucess('Ride verified! Starting your trip...');
         // Navigate to trip in progress screen
         setTimeout(() => {
-          router.push('/booking/WaitingForDriverScreen', { data: data });
+          router.push('/booking/TripInProgressScreen', { data: JSON.stringify(data) });
         }, 1500);
       } catch (err) {
         console.error('DriverArrivedScreen: verifyRide failed', err);

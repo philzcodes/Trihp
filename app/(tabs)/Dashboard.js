@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  BackHandler,
   Dimensions,
   FlatList,
   Image,
@@ -315,16 +314,8 @@ const Dashboard = () => {
     initializeDashboard();
   }, [isAuthenticated, authUserData]);
 
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        BackHandler.exitApp();
-        return true;
-      }
-    );
-    return () => backHandler.remove();
-  }, []);
+  // Back button handling is now handled globally in _layout.js
+  // No local handler needed - global handler will navigate back properly
 
   // Render Ride Item
   const renderRideItem = ({ item }) => (

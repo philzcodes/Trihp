@@ -109,10 +109,12 @@ const useBookingStore = create((set, get) => ({
     }
   },
 
-  cancelRide: async (cancellationReason) => {
-    const { rideRequestId } = get();
+  cancelRide: async (cancellationReason, rideId = null) => {
+    // Try to get rideId from parameter, store, or currentRide
+    let rideRequestId = rideId || get().rideRequestId || get().currentRide?.id;
+    
     if (!rideRequestId) {
-      throw new Error('No active ride request');
+      throw new Error('No active ride request. Please provide a ride ID.');
     }
 
     set({ loading: true, error: null });
@@ -132,10 +134,12 @@ const useBookingStore = create((set, get) => ({
     }
   },
 
-  verifyRide: async (verificationCode = null) => {
-    const { rideRequestId } = get();
+  verifyRide: async (verificationCode = null, rideId = null) => {
+    // Try to get rideId from parameter, store, or currentRide
+    let rideRequestId = rideId || get().rideRequestId || get().currentRide?.id;
+    
     if (!rideRequestId) {
-      throw new Error('No active ride request');
+      throw new Error('No active ride request. Please provide a ride ID.');
     }
 
     set({ loading: true, error: null });
@@ -144,6 +148,7 @@ const useBookingStore = create((set, get) => ({
       const response = await rideRequestAPI.verifyRide(rideRequestId, payload);
       set({
         currentRide: response,
+        rideRequestId: response.id || rideRequestId,
         rideStatus: response.status,
         loading: false,
       });
