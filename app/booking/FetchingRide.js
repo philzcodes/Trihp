@@ -19,6 +19,7 @@ import PaymentModal from '../../components/Modals/PaymentTypeModal';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
 import { showError } from '../../helper/Toaster';
+import { useRideWebSocket } from '../../services/websocketService';
 
 const FetchingRide = () => {
   const paymentMode = [
@@ -87,7 +88,6 @@ const FetchingRide = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [currentRideId, setCurrentRideId] = useState(rideId);
   const [showMatchingStats, setShowMatchingStats] = useState(false);
-  const intervalIdRef = useRef(null);
   const timeoutIdRef = useRef(null);
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
@@ -124,224 +124,177 @@ const FetchingRide = () => {
 
   const mapHeight = height - bottomSheetHeight;
 
-  const getRideDetails = useCallback(async () => {
-    try {
-      console.log('Checking for driver acceptance for ride:', rideId);
-      
-      if (!rideId) {
-        console.error('No ride ID provided for driver checking');
-        console.log('Available data:', data);
-        console.log('Available params:', params);
-        
-        // Try to get rideId from different sources
-        const alternativeRideId = data?.id || params?.rideId || params?.id;
-        if (alternativeRideId) {
-          console.log('Found alternative ride ID:', alternativeRideId);
-          setCurrentRideId(alternativeRideId); // Update the state with the found ride ID
-          // Import rideRequestAPI dynamically to avoid circular imports
-          const { rideRequestAPI } = await import('../../api/rideRequestAPI');
-          const rideRequest = await rideRequestAPI.getRideRequest(alternativeRideId);
-          console.log('Current ride request status:', rideRequest);
-          
-          if (rideRequest.status === 'DRIVER_ASSIGNED' && rideRequest.driverId) {
-            console.log('Driver assigned! Driver ID:', rideRequest.driverId);
-            
-            const driverData = {
-              status: 200,
-              driver: {
-                id: rideRequest.driverId,
-                name: rideRequest.driverName || 'Driver',
-                phone: rideRequest.driverPhone || '+1234567890',
-                rating: 4.8,
-                vehicle: {
-                  make: 'Vehicle',
-                  model: 'Model',
-                  year: '2020',
-                  color: 'Color',
-                  plate: rideRequest.driverVehicleNumber || 'ABC-123',
-                  image: require('../../assets/images/TopCar.png')
-                },
-                location: {
-                  latitude: parseFloat(rideRequest.pickupLatitude) + 0.001,
-                  longitude: parseFloat(rideRequest.pickupLongitude) + 0.001,
-                },
-                estimated_arrival: '3-5 minutes',
-                distance: '0.8 km'
-              },
-              ride: {
-                id: rideRequest.id,
-                pickup_location: rideRequest.pickupAddress || 'Unknown Pickup',
-                drop_location: rideRequest.dropOffAddress || 'Unknown Destination',
-                amount: rideRequest.totalFare?.toString() || '25',
-                distance: rideRequest.estimatedDistance?.toString() || '5.2',
-                payment_type: fallbackData?.payment_type || 'cash'
-              }
-            };
-            
-            console.log('Driver found and assigned:', driverData);
-            
-            setIsFetching(false);
-            clearInterval(intervalIdRef.current);
-            clearTimeout(timeoutIdRef.current);
-            router.push('/booking/DriverFoundScreen', { data: driverData });
-          } else if (rideRequest.status === 'CANCELLED') {
-            console.log('Ride request was cancelled');
-            setIsFetching(false);
-            clearInterval(intervalIdRef.current);
-            clearTimeout(timeoutIdRef.current);
-            router.push({
-              pathname: '/booking/RideCancelScreen',
-              params: { 
-                rideId: alternativeRideId,
-                reason: 'Ride was cancelled'
-              }
-            });
-          } else {
-            console.log('Still waiting for driver. Current status:', rideRequest.status);
-          }
-        } else {
-          console.error('No ride ID found in any parameter');
-          setIsFetching(false);
-          clearInterval(intervalIdRef.current);
-          clearTimeout(timeoutIdRef.current);
-          router.push({
-            pathname: '/booking/RideCancelScreen',
-            params: { 
-              rideId: alternativeRideId,
-              reason: 'No ride ID found'
-            }
-          });
-        }
-        return;
+  // Helper function to format driver data for navigation
+  const formatDriverData = useCallback((rideRequest) => {
+    return {
+      status: 200,
+      driver: {
+        id: rideRequest.driverId,
+        name: rideRequest.driverName || 'Driver',
+        phone: rideRequest.driverPhone || '+1234567890',
+        rating: 4.8,
+        vehicle: {
+          make: 'Vehicle',
+          model: 'Model',
+          year: '2020',
+          color: 'Color',
+          plate: rideRequest.driverVehicleNumber || 'ABC-123',
+          image: require('../../assets/images/TopCar.png')
+        },
+        location: {
+          latitude: parseFloat(rideRequest.pickupLatitude) + 0.001,
+          longitude: parseFloat(rideRequest.pickupLongitude) + 0.001,
+        },
+        estimated_arrival: '3-5 minutes',
+        distance: '0.8 km'
+      },
+      ride: {
+        id: rideRequest.id,
+        pickup_location: rideRequest.pickupAddress || rideRequest.pickup_location_name || 'Unknown Pickup',
+        drop_location: rideRequest.dropOffAddress || rideRequest.drop_location_name || 'Unknown Destination',
+        amount: rideRequest.totalFare?.toString() || rideRequest.amount || '25',
+        distance: rideRequest.estimatedDistance?.toString() || rideRequest.distance || '5.2',
+        payment_type: data?.payment_type || 'cash'
       }
+    };
+  }, [data]);
 
-      // Import rideRequestAPI dynamically to avoid circular imports
-      const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+  // Get the actual rideId from various sources
+  const actualRideId = currentRideId || rideId || data?.id || params?.rideId || params?.id;
+
+  // Use WebSocket hook for real-time updates
+  const { 
+    rideData, 
+    driverData, 
+    status, 
+    error: wsError, 
+    isConnected 
+  } = useRideWebSocket(actualRideId, {
+    onStatusChange: (newStatus) => {
+      console.log('Ride status changed via WebSocket:', newStatus);
       
-      // Update the current ride ID state
-      setCurrentRideId(rideId);
-      
-      // Check the current status of the ride request
-      const rideRequest = await rideRequestAPI.getRideRequest(rideId);
-      console.log('Current ride request status:', rideRequest);
-      
-      // Check if a driver has been assigned
-      if (rideRequest.status === 'DRIVER_ASSIGNED' && rideRequest.driverId) {
-        console.log('Driver assigned! Driver ID:', rideRequest.driverId);
+      // Handle driver assignment
+      if (newStatus === 'DRIVER_ASSIGNED') {
+        console.log('Driver assigned via WebSocket!');
+        setIsFetching(false);
+        clearTimeout(timeoutIdRef.current);
         
-        // Get driver details (you may need to implement this API endpoint)
-        // For now, we'll use the driver info from the ride request
-        const driverData = {
-          status: 200,
-          driver: {
-            id: rideRequest.driverId,
-            name: rideRequest.driverName || 'Driver',
-            phone: rideRequest.driverPhone || '+1234567890',
-            rating: 4.8, // You may want to get this from driver profile
-            vehicle: {
-              make: 'Vehicle',
-              model: 'Model',
-              year: '2020',
-              color: 'Color',
-              plate: rideRequest.driverVehicleNumber || 'ABC-123',
-              image: require('../../assets/images/TopCar.png')
-            },
-            location: {
-              latitude: parseFloat(rideRequest.pickupLatitude) + 0.001,
-              longitude: parseFloat(rideRequest.pickupLongitude) + 0.001,
-            },
-            estimated_arrival: '3-5 minutes',
-            distance: '0.8 km'
-          },
-          ride: {
-            id: rideRequest.id,
-            pickup_location: rideRequest.pickupAddress || 'Unknown Pickup',
-            drop_location: rideRequest.dropOffAddress || 'Unknown Destination',
-            amount: rideRequest.totalFare?.toString() || '25',
-            distance: rideRequest.estimatedDistance?.toString() || '5.2',
-            payment_type: fallbackData?.payment_type || 'cash'
-          }
+        // Format driver data and navigate
+        const rideRequest = rideData || { 
+          id: actualRideId,
+          driverId: driverData?.id,
+          driverName: driverData?.name,
+          driverPhone: driverData?.phone,
+          driverVehicleNumber: driverData?.vehicleNumber,
+          pickupLatitude: data?.pickup_latitude,
+          pickupLongitude: data?.pickup_longitude,
+          ...data
         };
         
-        console.log('Driver found and assigned:', driverData);
-        
+        const driverDataFormatted = formatDriverData(rideRequest);
+        router.push('/booking/DriverFoundScreen', { data: JSON.stringify(driverDataFormatted) });
+      } else if (newStatus === 'CANCELLED') {
+        console.log('Ride cancelled via WebSocket');
         setIsFetching(false);
-        clearInterval(intervalIdRef.current);
-        clearTimeout(timeoutIdRef.current);
-        router.push('/booking/DriverFoundScreen', { data: driverData });
-        
-      } else if (rideRequest.status === 'CANCELLED') {
-        console.log('Ride request was cancelled');
-        setIsFetching(false);
-        clearInterval(intervalIdRef.current);
         clearTimeout(timeoutIdRef.current);
         router.push({
           pathname: '/booking/RideCancelScreen',
           params: { 
-            rideId: currentRideId || rideId,
+            rideId: actualRideId,
             reason: 'Ride was cancelled'
           }
         });
-      } else {
-        console.log('Still waiting for driver. Current status:', rideRequest.status);
-        // Continue polling - driver not assigned yet
       }
-      
-    } catch (error) {
-      console.error('Error checking for driver:', error);
-      
-      // If it's a network error, continue polling
-      // If it's a serious error, stop polling
-      if (error.message?.includes('Network Error') || error.message?.includes('timeout')) {
-        console.log('Network error, continuing to poll...');
-        return;
+    },
+    onMessage: (messageData) => {
+      if (__DEV__) {
+        console.log('WebSocket message received in FetchingRide:', messageData);
       }
-      
-      // For other errors, stop polling and show error
-      setIsFetching(false);
-      clearInterval(intervalIdRef.current);
-      clearTimeout(timeoutIdRef.current);
-      
-      // Navigate to error screen or show error message
-      router.push({
-        pathname: '/booking/RideCancelScreen',
-        params: { 
-          rideId: currentRideId || rideId,
-          reason: 'Error finding driver'
-        }
-      });
-    }
-   }, [rideId, router, fallbackData, currentRideId]);
+    },
+  });
 
+  // Update currentRideId when rideData arrives
   useEffect(() => {
-    if (!isFetching) return;
+    if (rideData?.id && rideData.id !== currentRideId) {
+      setCurrentRideId(rideData.id);
+    }
+  }, [rideData, currentRideId]);
 
-    // Start polling every 3 seconds for driver assignment
-    intervalIdRef.current = setInterval(() => {
-      getRideDetails();
-    }, 3000);
+  // Handle driver assignment when driver data arrives
+  useEffect(() => {
+    if (driverData && rideData && rideData.status === 'DRIVER_ASSIGNED' && !isFetching) {
+      // Driver was assigned - format and navigate
+      const formattedData = formatDriverData({
+        ...rideData,
+        driverId: driverData.id || rideData.driverId,
+        driverName: driverData.name || rideData.driverName,
+        driverPhone: driverData.phone || rideData.driverPhone,
+        driverVehicleNumber: driverData.vehicleNumber || rideData.driverVehicleNumber,
+      });
+      
+      setIsFetching(false);
+      clearTimeout(timeoutIdRef.current);
+      router.push('/booking/DriverFoundScreen', { data: JSON.stringify(formattedData) });
+    }
+  }, [driverData, rideData, isFetching, formatDriverData, router]);
 
-    // Set timeout to 5 minutes (300 seconds) - reasonable time to wait for driver
+  // Set timeout for driver assignment (5 minutes)
+  useEffect(() => {
+    if (!isFetching || !actualRideId) return;
+
     timeoutIdRef.current = setTimeout(() => {
       console.log('Timeout reached - no driver found within 5 minutes');
-      clearInterval(intervalIdRef.current);
       setIsFetching(false);
       
-      // Navigate to cancellation screen with timeout reason
       router.push({
         pathname: '/booking/RideCancelScreen',
         params: { 
-          rideId: currentRideId || rideId,
+          rideId: actualRideId,
           reason: 'No driver found within 5 minutes'
         }
       });
     }, 300000); // 5 minutes
 
     return () => {
-      clearInterval(intervalIdRef.current);
-      clearTimeout(timeoutIdRef.current);
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
     };
-  }, [getRideDetails, isFetching, rideId, router, currentRideId]);
+  }, [isFetching, actualRideId, router]);
+
+  // Fallback: Fetch initial ride data if WebSocket is not connected
+  useEffect(() => {
+    if (!isConnected && actualRideId && !rideData) {
+      // Fetch initial data once if WebSocket fails
+      (async () => {
+        try {
+          const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+          const rideRequest = await rideRequestAPI.getRideRequest(actualRideId);
+          console.log('Fetched initial ride data (fallback):', rideRequest);
+          
+          if (rideRequest.status === 'DRIVER_ASSIGNED' && rideRequest.driverId) {
+            console.log('Driver already assigned!');
+            setIsFetching(false);
+            clearTimeout(timeoutIdRef.current);
+            const driverDataFormatted = formatDriverData(rideRequest);
+            router.push('/booking/DriverFoundScreen', { data: JSON.stringify(driverDataFormatted) });
+          } else if (rideRequest.status === 'CANCELLED') {
+            setIsFetching(false);
+            clearTimeout(timeoutIdRef.current);
+            router.push({
+              pathname: '/booking/RideCancelScreen',
+              params: { 
+                rideId: actualRideId,
+                reason: 'Ride was cancelled'
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch initial ride data (fallback):', err);
+        }
+      })();
+    }
+  }, [isConnected, actualRideId, rideData, formatDriverData, router]);
 
   const handlePaymentMethod = (method) => {
     try {

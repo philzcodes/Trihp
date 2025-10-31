@@ -18,6 +18,7 @@ import rideRequestAPI from '../../api/rideRequestAPI';
 import { MapComponent } from '../../components';
 import { Colors, Fonts } from '../../constants';
 import { showError, showWarning } from '../../helper/Toaster';
+import { useRideWebSocket } from '../../services/websocketService';
 
 const WaitingForDriverScreen = () => {
   const params = useLocalSearchParams();
@@ -48,7 +49,6 @@ const WaitingForDriverScreen = () => {
   // Timer state for optional auto-navigation (derived from ETA or fallback)
   const [timeRemaining, setTimeRemaining] = useState(null);
   const timerIntervalRef = useRef(null);
-  const pollingIntervalRef = useRef(null);
   const [currentRide, setCurrentRide] = useState(null);
   const [driverInfoState, setDriverInfoState] = useState(null);
   const [rideInfoState, setRideInfoState] = useState(null);
@@ -66,20 +66,147 @@ const WaitingForDriverScreen = () => {
 
   console.log('WaitingForDriverScreen - Screen height:', height);
 
-  // Initialize local state from incoming params (or null); we'll poll to keep these up-to-date
+  // Initialize local state from incoming params (or null); WebSocket will keep these up-to-date
   const initialDriver = data?.driver || null;
   const initialRide = data?.ride || data?.data || data || null;
-  if (driverInfoState === null) setDriverInfoState(initialDriver || {});
-  if (rideInfoState === null) setRideInfoState(initialRide || {});
+  
+  // Get ride ID for WebSocket subscription
+  const rideId = initialRide?.id || initialRide?.rideId || data?.id || data?.ride?.id || data?.rideId || null;
+  
+  // Initialize state from params
+  useEffect(() => {
+    if (driverInfoState === null && initialDriver) {
+      setDriverInfoState(initialDriver);
+    }
+    if (rideInfoState === null && initialRide) {
+      setRideInfoState(initialRide);
+    }
+  }, []);
+
+  // Use WebSocket hook for real-time updates
+  const { 
+    rideData, 
+    driverData, 
+    status, 
+    eta: wsEta, 
+    error: wsError, 
+    isConnected 
+  } = useRideWebSocket(rideId, {
+    onStatusChange: (newStatus) => {
+      // Handle status changes and navigate accordingly
+      if (newStatus === 'DRIVER_ARRIVED') {
+        router.push({ 
+          pathname: '/booking/DriverArrivedScreen', 
+          params: { 
+            data: JSON.stringify({ 
+              driver: rideInfoState || rideData, 
+              ride: rideInfoState || rideData 
+            }) 
+          } 
+        });
+      } else if (newStatus === 'CANCELLED') {
+        router.push({ 
+          pathname: '/booking/RideCancelScreen', 
+          params: { 
+            rideId: rideId, 
+            reason: 'Ride cancelled' 
+          } 
+        });
+      } else if (newStatus === 'TRIP_STARTED') {
+        router.push({ 
+          pathname: '/booking/TripInProgressScreen', 
+          params: { 
+            data: JSON.stringify({ 
+              driver: rideInfoState || rideData, 
+              ride: rideInfoState || rideData 
+            }) 
+          } 
+        });
+      }
+    },
+    onMessage: (data) => {
+      // Log WebSocket messages for debugging
+      if (__DEV__) {
+        console.log('WebSocket message received:', data);
+      }
+    },
+  });
+
+  // Update state when WebSocket data arrives
+  useEffect(() => {
+    if (rideData) {
+      setCurrentRide(rideData);
+      setRideInfoState(rideData);
+      
+      // Update driver info if available
+      if (rideData.driverId) {
+        setDriverInfoState({
+          id: rideData.driverId,
+          name: rideData.driverName,
+          phone: rideData.driverPhone,
+          vehicleNumber: rideData.driverVehicleNumber,
+          latitude: rideData.pickupLatitude,
+          longitude: rideData.pickupLongitude,
+          profile_image: rideData.driverProfileImage || null,
+        });
+      }
+    }
+  }, [rideData]);
+
+  // Update driver info when driver data arrives
+  useEffect(() => {
+    if (driverData) {
+      setDriverInfoState(prev => ({
+        ...prev,
+        ...driverData,
+      }));
+    }
+  }, [driverData]);
+
+  // Update ETA when ETA update arrives
+  useEffect(() => {
+    if (wsEta !== null && wsEta !== undefined) {
+      setEta(wsEta);
+    }
+  }, [wsEta]);
+
+  // Handle WebSocket errors - fallback to API call if WebSocket fails
+  useEffect(() => {
+    if (wsError && !isConnected && rideId) {
+      console.warn('WebSocket connection failed, falling back to initial API fetch');
+      // Fetch initial ride data once if WebSocket fails
+      (async () => {
+        try {
+          const r = await rideRequestAPI.getRideRequest(rideId);
+          if (r) {
+            setCurrentRide(r);
+            setRideInfoState(r);
+            setDriverInfoState({
+              id: r.driverId,
+              name: r.driverName,
+              phone: r.driverPhone,
+              vehicleNumber: r.driverVehicleNumber,
+              latitude: r.pickupLatitude,
+              longitude: r.pickupLongitude,
+              profile_image: r.driverProfileImage || null,
+            });
+            if (r.estimatedArrival) setEta(r.estimatedArrival);
+          }
+        } catch (err) {
+          console.error('Failed to fetch ride data:', err);
+        }
+      })();
+    }
+  }, [wsError, isConnected, rideId]);
   
   const pickupCoordinates = {
-    latitude: parseFloat(rideInfo.pickup_latitude) || 4.8666,
-    longitude: parseFloat(rideInfo.pickup_longitude) || 6.9745,
+    latitude: parseFloat(rideInfoState?.pickup_latitude || rideInfoState?.pickupLatitude) || 4.8666,
+    longitude: parseFloat(rideInfoState?.pickup_longitude || rideInfoState?.pickupLongitude) || 6.9745,
   };
 
   const dropOffCoordinates = {
-    latitude: parseFloat(rideInfo.drop_latitude) || 4.8670,
-    longitude: parseFloat(rideInfo.drop_longitude) || 6.9750,
+    latitude: parseFloat(rideInfoState?.drop_latitude || rideInfoState?.dropOffLatitude) || 4.8670,
+    longitude: parseFloat(rideInfoState?.drop_longitude || rideInfoState?.dropOffLongitude) || 6.9750,
   };
 
   // Driver is now at pickup location
@@ -107,25 +234,16 @@ const WaitingForDriverScreen = () => {
     };
   };
 
-  // Polling effect - fetch ride updates (ETA, driver location, status)
+  // Fetch initial ride data if WebSocket is not connected and we have a rideId
   useEffect(() => {
-    const rideId = rideInfoState?.id || rideInfoState?.rideId || rideInfoState?.id || data?.id || data?.ride?.id || data?.rideId;
-
-    const stopPolling = () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-
-    const startPolling = () => {
-      // initial fetch
+    if (!isConnected && rideId && !rideInfoState) {
+      // Fetch initial data once
       (async () => {
         try {
-          if (!rideId) return;
           const r = await rideRequestAPI.getRideRequest(rideId);
           if (r) {
             setCurrentRide(r);
+            setRideInfoState(r);
             setDriverInfoState({
               id: r.driverId,
               name: r.driverName,
@@ -135,79 +253,14 @@ const WaitingForDriverScreen = () => {
               longitude: r.pickupLongitude,
               profile_image: r.driverProfileImage || null,
             });
-            setRideInfoState(r);
             if (r.estimatedArrival) setEta(r.estimatedArrival);
-
-            // react to status changes
-            if (r.status === 'DRIVER_ARRIVED' || r.status === 'DRIVER_ARRIVED') {
-              stopPolling();
-              router.push({ pathname: '/booking/DriverArrivedScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
-              return;
-            }
-
-            if (r.status === 'CANCELLED') {
-              stopPolling();
-              router.push({ pathname: '/booking/RideCancelScreen', params: { rideId: rideId, reason: 'Ride cancelled' } });
-              return;
-            }
-
-            if (r.status === 'TRIP_STARTED') {
-              stopPolling();
-              router.push({ pathname: '/booking/TripInProgressScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
-              return;
-            }
           }
         } catch (err) {
-          if (__DEV__) console.log('WaitingForDriverScreen: initial poll error', err);
+          console.error('Failed to fetch initial ride data:', err);
         }
       })();
-
-      // periodic poll
-      pollingIntervalRef.current = setInterval(async () => {
-        try {
-          if (!rideId) return;
-          const r = await rideRequestAPI.getRideRequest(rideId);
-          if (r) {
-            setCurrentRide(r);
-            setDriverInfoState({
-              id: r.driverId,
-              name: r.driverName,
-              phone: r.driverPhone,
-              vehicleNumber: r.driverVehicleNumber,
-              latitude: r.pickupLatitude,
-              longitude: r.pickupLongitude,
-              profile_image: r.driverProfileImage || null,
-            });
-            setRideInfoState(r);
-            if (r.estimatedArrival) setEta(r.estimatedArrival);
-
-            // status-driven navigation
-            if (r.status === 'DRIVER_ARRIVED') {
-              stopPolling();
-              router.push({ pathname: '/booking/DriverArrivedScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
-            } else if (r.status === 'CANCELLED') {
-              stopPolling();
-              router.push({ pathname: '/booking/RideCancelScreen', params: { rideId: rideId, reason: 'Ride cancelled' } });
-            } else if (r.status === 'TRIP_STARTED') {
-              stopPolling();
-              router.push({ pathname: '/booking/TripInProgressScreen', params: { data: JSON.stringify({ driver: r, ride: r }) } });
-            }
-          }
-        } catch (err) {
-          if (__DEV__) console.log('WaitingForDriverScreen: poll error', err);
-        }
-      }, 5000);
-    };
-
-    startPolling();
-
-    return () => {
-      stopPolling();
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, [data, router, rideInfoState]);
+    }
+  }, [isConnected, rideId, rideInfoState]);
 
   const handleMessageDriver = () => {
     showWarning('Message functionality coming soon');
@@ -380,8 +433,8 @@ const WaitingForDriverScreen = () => {
             <View style={styles.driverImageContainer}>
               <Image
                 source={
-                  driverInfo?.profile_image 
-                    ? { uri: driverInfo.profile_image }
+                  driverInfoState?.profile_image 
+                    ? { uri: driverInfoState.profile_image }
                     : require('../../assets/images/user.jpg')
                 }
                 style={styles.driverImage}
