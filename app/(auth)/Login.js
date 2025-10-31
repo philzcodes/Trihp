@@ -86,7 +86,7 @@ const Login = () => {
           }
         }
         
-        Alert.alert('Success', response.message || 'Login successful! Welcome back!');
+       // Alert.alert('Success', response.message || 'Login successful! Welcome back!');
         router.replace('/(tabs)/Dashboard');
       } else {
         Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
@@ -141,7 +141,7 @@ const Login = () => {
 
           {/* Login with phone number link - Centered */}
           <Pressable
-            onPress={() => router.push('/LoginWithPhone')}
+            onPress={() => router.push('/(auth)/LoginWithPhone')}
             style={styles.phoneLoginLink}
           >
             <Text style={styles.phoneLoginText}>Login with phone number</Text>

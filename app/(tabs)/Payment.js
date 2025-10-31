@@ -98,9 +98,9 @@ const Payment = () => {
 
     const Header = () => (
         <View style={styles.header}>
-            <Pressable onPress={() => router.back()}>
+            {/* <Pressable onPress={() => router.back()}>
                 <AntDesign name="arrowleft" size={24} color={Colors.whiteColor} />
-            </Pressable>
+            </Pressable> */}
             <Text style={styles.headerTitle}>Payment</Text>
         </View>
     );

@@ -1,17 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   Image,
-  ImageBackground,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Fonts } from '../../constants';
+import { Colors } from '../../constants';
 
 const Services = () => {
   const router = useRouter();
@@ -19,58 +20,60 @@ const Services = () => {
   const rideTypes = [
     {
       id: '1',
-      icon: require('../../assets/images/car.png'),
-      value: 'Motorcycle',
+      icon: require('../../assets/images/services/motorcycle.png'),
+      value: 'Trihp Motorcycle',
     },
     {
       id: '2',
-      icon: require('../../assets/images/auto.png'),
-      value: 'Keke',
+      icon: require('../../assets/images/services/keke.png'),
+      value: 'trihp Keke',
     },
     {
       id: '3',
-      icon: require('../../assets/images/bike.png'),
-      value: 'Lite(no/ac)',
+      icon: require('../../assets/images/services/car-lite.png'),
+      value: 'Trihp Lite (no/ac)',
     },
     {
       id: '4',
-      icon: require('../../assets/images/bike.png'),
-      value: 'Smooth',
+      icon: require('../../assets/images/services/car-smooth.png'),
+      value: 'Trihp Smooth',
     },
     {
       id: '5',
-      icon: require('../../assets/images/auto.png'),
-      value: 'SUV',
+      icon: require('../../assets/images/services/suv.png'),
+      value: 'Trihp SUV',
     },
     {
       id: '6',
-      icon: require('../../assets/images/car.png'),
-      value: 'Luxe',
+      icon: require('../../assets/images/services/car-luxe.png'),
+      value: 'Trihp Luxe',
     },
-  ];
-
-  const payments = [
-    { 
-      id: 1, 
-      icon: require('../../assets/images/wallet.png'), 
-      value: 'Trihp Wallet' 
-    }
   ];
 
   const handleSelectedRideType = async (rideType) => {
     if (rideType) {
       try {
         await AsyncStorage.setItem('selectedRideType', JSON.stringify(rideType));
-        router.push('/search-ride', { selectedRide: rideType });
+        router.push('/search-ride');
       } catch (error) {
         console.error('Error saving ride type:', error);
       }
     }
   };
 
+  const handleBackPress = () => {
+    router.back();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.blackColor} />
+      
+      {/* Header */}
       <View style={styles.header}>
+        <Pressable onPress={handleBackPress} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={Colors.whiteColor} />
+        </Pressable>
         <Text style={styles.headerTitle}>Services</Text>
       </View>
       
@@ -78,70 +81,45 @@ const Services = () => {
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.bannerText}>
-          Ride beyond limits
-        </Text>
+        {/* Banner Text */}
+        <Text style={styles.bannerText}>Ride Beyond Limits</Text>
         
-        <Image 
-          source={require('../../assets/images/service-banner.png')} 
-          resizeMode="contain" 
-          style={styles.bannerImage} 
-        />
+        {/* Banner Image */}
+        <View style={styles.bannerContainer}>
+          <Image 
+            source={require('../../assets/images/service-banner.png')} 
+            resizeMode="cover" 
+            style={styles.bannerImage} 
+          />
+        </View>
         
-        {/* Rides Section */}
+        {/* Rides Section Divider */}
         <View style={styles.sectionDivider}>
           <View style={styles.dividerLine} />
           <Text style={styles.sectionTitle}>Rides</Text>
           <View style={styles.dividerLine} />
         </View>
         
+        {/* Ride Types List */}
         <View style={styles.rideTypesContainer}>
           {rideTypes.map((item) => (
             <Pressable
               key={item.id}
-              style={styles.rideTypeItem}
-              onPress={() => handleSelectedRideType(item.id)}
+              style={({ pressed }) => [
+                styles.rideTypeCard,
+                pressed && styles.rideTypeCardPressed
+              ]}
+              onPress={() => handleSelectedRideType(item)}
+              android_ripple={{ color: '#2a2a2a' }}
             >
-              <Text style={styles.rideTypeText}>{item.value}</Text>
-              <ImageBackground 
-                source={require('../../assets/images/service_bg.png')} 
-                style={styles.rideTypeBackground}
-              >
+              <View style={styles.rideTypeIconContainer}>
                 <Image 
                   source={item.icon} 
                   resizeMode="contain" 
                   style={styles.rideTypeIcon} 
                 />
-              </ImageBackground>
-            </Pressable>
-          ))}
-        </View>
-        
-        {/* Payments Section */}
-        <View style={styles.sectionDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.sectionTitle}>Payments</Text>
-          <View style={styles.dividerLine} />
-        </View>
-        
-        <View style={styles.paymentsContainer}>
-          {payments.map((item) => (
-            <Pressable
-              key={item.id}
-              style={styles.paymentItem}
-              onPress={() => router.push('/(tabs)/Payment')}
-            >
-              <Text style={styles.paymentText}>{item.value}</Text>
-              <ImageBackground 
-                source={require('../../assets/images/service_bg.png')} 
-                style={styles.paymentBackground}
-              >
-                <Image 
-                  source={item.icon} 
-                  resizeMode="contain" 
-                  style={styles.paymentIcon} 
-                />
-              </ImageBackground>
+              </View>
+              <Text style={styles.rideTypeText}>{item.value}</Text>
             </Pressable>
           ))}
         </View>
@@ -158,102 +136,95 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.blackColor,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteColor,
+    borderBottomColor: '#1a1a1a',
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 4,
   },
   headerTitle: {
-    ...Fonts.Regular,
-    fontSize: 24,
+    fontSize: 20,
+    fontWeight: '600',
     color: Colors.whiteColor,
-    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   scrollContent: {
-    paddingBottom: 20,
-    marginHorizontal: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   bannerText: {
-    ...Fonts.Regular,
+    fontSize: 16,
     color: Colors.whiteColor,
-    fontSize: 14,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 16,
+    fontWeight: '400',
+  },
+  bannerContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 24,
   },
   bannerImage: {
     width: '100%',
-    marginBottom: 15,
+    height: '100%',
   },
   sectionDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 15,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#8F8F8F',
+    backgroundColor: '#333',
   },
   sectionTitle: {
     color: Colors.whiteColor,
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginHorizontal: 10,
+    fontWeight: '500',
+    paddingHorizontal: 16,
+    letterSpacing: 0.5,
   },
   rideTypesContainer: {
+    gap: 16,
+  },
+  rideTypeCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-    justifyContent: 'space-between',
-  },
-  rideTypeItem: {
-    width: '29%',
     alignItems: 'center',
-    marginBottom: 30,
-    marginHorizontal: 7,
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    padding: 16,
+    minHeight: 80,
   },
-  rideTypeText: {
-    color: Colors.whiteColor,
-    textAlign: 'center',
-    ...Fonts.Regular,
-    fontSize: 12,
-    paddingBottom: 10,
+  rideTypeCardPressed: {
+    backgroundColor: '#1a1a1a',
+    borderColor: '#3a3a3a',
   },
-  rideTypeBackground: {
+  rideTypeIconContainer: {
+    width: 80,
+    height: 60,
     justifyContent: 'center',
-    height: 65,
     alignItems: 'center',
+    marginRight: 16,
   },
   rideTypeIcon: {
-    height: 60,
-    width: 60,
+    width: '100%',
+    height: '100%',
   },
-  paymentsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  paymentItem: {
-    width: '29%',
-    alignItems: 'center',
-    marginBottom: 30,
-    marginHorizontal: 7,
-  },
-  paymentText: {
+  rideTypeText: {
+    flex: 1,
     color: Colors.whiteColor,
-    textAlign: 'center',
-    ...Fonts.Regular,
-    fontSize: 12,
-    paddingBottom: 10,
-  },
-  paymentBackground: {
-    justifyContent: 'center',
-    height: 65,
-    alignItems: 'center',
-  },
-  paymentIcon: {
-    height: 50,
-    width: 60,
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
 });
