@@ -2,6 +2,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Constant from '../../api/constants';
 import { authAPI } from '../../api/services';
 import { BackButton, TriphButton } from '../../components';
@@ -261,7 +262,7 @@ const Register = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <BackButton onPress={() => router.back()} />
       
       <ScrollView 
@@ -371,7 +372,7 @@ const Register = () => {
         </View>
 
         {/* Middle Name Input */}
-        <View style={styles.inputWrapper}>
+        {/* <View style={styles.inputWrapper}>
           <TextInput
             value={middleName}
             onChangeText={setMiddleName}
@@ -379,7 +380,7 @@ const Register = () => {
             placeholderTextColor={Colors.grey8 || '#666'}
             style={styles.input}
           />
-        </View>
+        </View> */}
 
         {/* Last Name Input */}
         <View style={styles.inputWrapper}>
@@ -481,17 +482,21 @@ const Register = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default Register;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.blackColor,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.blackColor || '#000',
-    paddingTop: 50,
+    // paddingTop: 50,
   },
   scrollView: {
     flex: 1,
