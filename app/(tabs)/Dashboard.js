@@ -28,11 +28,17 @@ import { Colors, Fonts } from '../../constants';
 // Store
 import useUserStore from '../../store/userStore';
 
+// Helper
+import { getRecentRidesHistory } from '../../helper/locationHistory';
+
+// Hooks
+import { useRequireAuth } from '../../hooks';
+
 const Dashboard = () => {
   const router = useRouter();
   
   // User store
-  const { userData, fetchUser, isAuthenticated } = useUserStore();
+  const { userData, fetchUser } = useUserStore();
   
   // Banner data - using the same image-based approach
   const bannerData = [
@@ -58,31 +64,8 @@ const Dashboard = () => {
   const bannerRef = useRef(null);
   const screenWidth = Dimensions.get('window').width;
   
-  // Dummy data states
-  const [recentRide, setRecentRide] = useState([
-    {
-      id: 1,
-      pickup_location_name: "123 Main St",
-      drop_location_name: "456 Central Ave",
-      pickup_latitude: 40.7128,
-      pickup_longitude: -74.0060,
-      drop_latitude: 40.7328,
-      drop_longitude: -74.0260,
-      distance: "5.2 km",
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 2,
-      pickup_location_name: "789 Broadway",
-      drop_location_name: "321 Park Ave",
-      pickup_latitude: 40.7228,
-      pickup_longitude: -74.0160,
-      drop_latitude: 40.7428,
-      drop_longitude: -74.0360,
-      distance: "3.8 km",
-      created_at: new Date(Date.now() - 86400000).toISOString()
-    }
-  ]);
+  // Recent ride history state
+  const [recentRide, setRecentRide] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [originLocation, setOriginLocation] = useState("Your Current Location");
@@ -235,51 +218,102 @@ const Dashboard = () => {
     }
   };
 
-  // Dummy recent rides
+  // Load recent rides from history
   const loadRecentRides = async () => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setLoading(false);
+      // Get current user data from store (it may have been updated)
+      const currentUserData = useUserStore.getState().userData;
+      
+      // Try to get actual ride history from API first
+      if (currentUserData && currentUserData.id) {
+        try {
+          const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+          const response = await rideRequestAPI.getRideByRider(currentUserData.id);
+          
+          // Handle both response.data and direct response arrays
+          const ridesData = response?.data?.data || response?.data || response || [];
+          const ridesArray = Array.isArray(ridesData) ? ridesData : [];
+          
+          if (ridesArray.length > 0) {
+            // Transform API response to match expected format
+            const formattedRides = ridesArray
+              .filter(ride => ride.status === 'TRIP_COMPLETED' || ride.status === 'CANCELLED')
+              .slice(0, 2)
+              .map(ride => ({
+                id: ride.id,
+                pickup_location_name: ride.pickupAddress || 'Previous Pickup',
+                drop_location_name: ride.dropOffAddress || 'Previous Destination',
+                pickup_latitude: parseFloat(ride.pickupLatitude) || 0,
+                pickup_longitude: parseFloat(ride.pickupLongitude) || 0,
+                drop_latitude: parseFloat(ride.dropOffLatitude) || 0,
+                drop_longitude: parseFloat(ride.dropOffLongitude) || 0,
+                distance: ride.estimatedDistance ? `${ride.estimatedDistance} km` : '0 km',
+                created_at: ride.createdAt || new Date().toISOString()
+              }));
+            
+            if (formattedRides.length > 0) {
+              setRecentRide(formattedRides);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (apiError) {
+          // Only log if it's not a 401 (unauthorized) - that's expected when user is not logged in
+          if (apiError?.statusCode !== 401 && apiError?.response?.status !== 401) {
+            console.log('Error fetching rides from API, using location history:', apiError.message || apiError);
+          }
+        }
+      }
+
+      // Fallback to location history (works even without authentication)
+      const historyRides = await getRecentRidesHistory(2);
+      if (historyRides.length > 0) {
+        setRecentRide(historyRides);
+      } else {
+        setRecentRide([]);
+      }
     } catch (error) {
-      console.log('Error loading rides:', error);
+      console.error('Error loading rides:', error);
+      setRecentRide([]);
+    } finally {
       setLoading(false);
     }
   };
 
+  // Require authentication for dashboard
+  const { isAuthenticated, userData: authUserData } = useRequireAuth({
+    alertTitle: 'Authentication Required',
+    alertMessage: 'Please log in to access your dashboard',
+  });
+
   // Effects
   useEffect(() => {
     const initializeDashboard = async () => {
+      // Only proceed if user is authenticated
+      if (!isAuthenticated || !authUserData?.id) {
+        return;
+      }
+
       try {
-        // First fetch user data
-        console.log('Dashboard: Fetching user data...');
-        await fetchUser();
-        
-        // Small delay to ensure user data is available
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Then check for active ride
-        console.log('Dashboard: Checking for active ride...');
+        // Check for active ride only if user is logged in
         const hasActiveRide = await checkActiveRide();
         
         // Only load dashboard data if no active ride was found
         if (!hasActiveRide) {
-          console.log('Dashboard: No active ride found, loading dashboard data...');
           getLocation();
           loadRecentRides();
-        } else {
-          console.log('Dashboard: Active ride found, skipping dashboard data load');
         }
       } catch (error) {
         console.error('Dashboard initialization error:', error);
-        // Fallback: load dashboard data anyway
+        // On error, just load basic dashboard data
         getLocation();
-        loadRecentRides();
+        setRecentRide([]);
       }
     };
     
     initializeDashboard();
-  }, []);
+  }, [isAuthenticated, authUserData]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(

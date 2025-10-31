@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -18,11 +19,14 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getCurrentToken, isAuthenticated } from '../../api/client';
+import { getCurrentToken } from '../../api/client';
 import rideRequestAPI from '../../api/rideRequestAPI';
 import { MapComponent } from '../../components';
+import TriphButton from '../../components/TriphButton';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
+import { getRecentLocations, saveRideLocation } from '../../helper/locationHistory';
+import { useAuthCheck } from '../../hooks';
 import useBookingStore from '../../store/bookingStore';
 import useUserStore from '../../store/userStore';
 import { GOOGLE_MAPS_APIKEY } from '../../utils/Api';
@@ -41,33 +45,26 @@ const SearchScreen = ({ route }) => {
   const [dropPrediction, setDropPredictions] = useState([]);
   const [destinationCoordinates, setDestinationCoordinates] = useState();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true); // Loading state for map and location
   const [focusedInput, setFocusedInput] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isReturningFromRide, setIsReturningFromRide] = useState(false);
   const [isCreatingRide, setIsCreatingRide] = useState(false);
-  const [rideRequestCreated, setRideRequestCreated] = useState(false);
 
   // Zustand stores
   const { createRideRequest, setCurrentRide } = useBookingStore();
   const { userData, getUserName, getUserPhone, fetchUser } = useUserStore();
+  
+  // Auth check hook (doesn't auto-redirect, allows conditional rendering)
+  const { isAuthenticated: userIsAuthenticated, redirectToLogin } = useAuthCheck();
 
-  // Mock recent locations - matching the image
-  const recentLocations = [
-    {
-      id: '1',
-      name: 'Main Peninsular Rd',
-      address: 'Hamilton Freetown, Sierra Leone.',
-    },
-    {
-      id: '2',
-      name: 'Main Peninsular Rd',
-      address: 'Hamilton Freetown, Sierra Leone.',
-    },
-  ];
+  const [recentLocations, setRecentLocations] = useState([]);
 
   useEffect(() => {
     getLocation();
     fetchUser(); // Fetch user data from AsyncStorage
+    loadRecentLocations(); // Load recent locations from history
+    
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboardVisible(true);
     });
@@ -81,43 +78,18 @@ const SearchScreen = ({ route }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (originCoordinates && destinationCoordinates && originLocation && destinationLocation && !isReturningFromRide) {
-      if (originCoordinates.latitude && originCoordinates.longitude && 
-          destinationCoordinates.latitude && destinationCoordinates.longitude) {
-        const distance = haversineDistance(originCoordinates, destinationCoordinates);
-        const details = {
-          originLocation,
-          destinationLocation,
-          originCoordinates,
-          destinationCoordinates,
-          distance,
-          stops,
-        };
-
-        const timer = setTimeout(() => {
-          console.log('SearchScreen: Navigating to RideSelection with details:', details);
-          router.push({
-            pathname: '/booking/RideSelection',
-            params: {
-              ...details,
-              originCoordinates: JSON.stringify(details.originCoordinates),
-              destinationCoordinates: JSON.stringify(details.destinationCoordinates),
-              distance: details.distance.toString(),
-              stops: JSON.stringify(details.stops)
-            }
-          });
-        }, 100);
-        return () => clearTimeout(timer);
-      } else {
-        console.warn('Invalid coordinates structure:', { originCoordinates, destinationCoordinates });
-      }
+  // Load recent locations from history
+  const loadRecentLocations = async () => {
+    try {
+      const locations = await getRecentLocations(2);
+      setRecentLocations(locations);
+    } catch (error) {
+      console.error('Error loading recent locations:', error);
+      setRecentLocations([]);
     }
+  };
 
-    if (isReturningFromRide) {
-      setIsReturningFromRide(false);
-    }
-  }, [originCoordinates, destinationCoordinates, originLocation, destinationLocation, isReturningFromRide]);
+  // Removed auto-navigation - now using Continue button for user control
 
   useEffect(() => {
     if (route?.params?.stops && Array.isArray(route.params.stops)) {
@@ -130,11 +102,13 @@ const SearchScreen = ({ route }) => {
 
   const getLocation = async () => {
     try {
+      setInitialLoading(true);
       let { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
         console.warn('Permission to access location was denied');
         setOriginLocation("Location permission denied");
+        setInitialLoading(false); // Stop loading even on error
         return;
       }
 
@@ -177,9 +151,16 @@ const SearchScreen = ({ route }) => {
         console.warn('Reverse geocoding failed:', geocodeError);
         setOriginLocation("Current Location");
       }
+      
+      // Location and coordinates are ready, wait a bit for map to render
+      // Use a slightly longer delay to ensure map component is fully loaded
+      setTimeout(() => {
+        setInitialLoading(false);
+      }, 800); // Delay to ensure map is rendered and interactive
     } catch (error) {
       console.warn('Location error:', error);
       setOriginLocation("Location unavailable");
+      setInitialLoading(false); // Stop loading on error
     }
   };
 
@@ -291,13 +272,29 @@ const SearchScreen = ({ route }) => {
   };
 
   const handleRecentLocationPress = (item) => {
-    setOriginLocation(item.name);
-    setDestinationLocation(item.address);
-    checkLocation(item.name, true);
-    checkLocation(item.address, false);
+    // Set the recent location as destination (where to field)
+    setDestinationLocation(item.address || item.name);
+    checkLocation(item.address || item.name, false);
+    
+    // Keep current location as origin if available, otherwise use item coordinates for origin too
+    if (item.latitude && item.longitude) {
+      const coords = {
+        latitude: item.latitude,
+        longitude: item.longitude,
+        latitudeDelta: 0.006996872576237934,
+        longitudeDelta: 0.004216404151804909,
+      };
+      setDestinationCoordinates(coords);
+    }
   };
 
   const handleCreateRideRequest = async () => {
+    // Prevent multiple simultaneous calls
+    if (isCreatingRide || loading) {
+      console.log('Ride creation already in progress');
+      return;
+    }
+
     // Validate inputs
     if (!originLocation || !destinationLocation) {
       Alert.alert('Missing Information', 'Please select both pickup and destination locations');
@@ -309,59 +306,20 @@ const SearchScreen = ({ route }) => {
       return;
     }
 
-    if (!userData) {
-      console.log('No user data found, attempting to fetch...');
-      try {
-        const fetchedUserData = await fetchUser();
-        if (!fetchedUserData) {
-          Alert.alert('Authentication Required', 'Please log in to create a ride request');
-          return;
-        }
-        console.log('User data fetched successfully:', !!fetchedUserData);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        Alert.alert('Authentication Required', 'Please log in to create a ride request');
-        return;
-      }
-    }
-
-    // Check authentication status
-    const isUserAuthenticated = await isAuthenticated();
-    const currentToken = await getCurrentToken();
-    
-    console.log('Authentication check:', {
-      isAuthenticated: isUserAuthenticated,
-      hasToken: !!currentToken,
-      tokenPreview: currentToken ? currentToken.substring(0, 20) + '...' : 'No token',
-      userData: !!userData,
-    });
-
-    if (!isUserAuthenticated || !currentToken) {
-      Alert.alert('Authentication Required', 'Please log in again to create a ride request');
+    // Check authentication
+    if (!userIsAuthenticated) {
+      redirectToLogin('Please log in to create a ride request');
       return;
     }
 
-    // Test API call to verify token works
-    try {
-      console.log('Testing API authentication...');
-      const testResponse = await fetch('http://192.168.100.243:3000/api/trihp/v1/users/profile', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${currentToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (testResponse.ok) {
-        console.log('✅ Token is valid - API test successful');
-      } else {
-        console.log('❌ Token is invalid - API test failed:', testResponse.status);
-        const errorData = await testResponse.json();
-        console.log('Error details:', errorData);
-      }
-    } catch (testError) {
-      console.log('❌ API test failed with error:', testError);
+    // Get current token
+    const currentToken = await getCurrentToken();
+    if (!currentToken) {
+      redirectToLogin('Please log in again to create a ride request');
+      return;
     }
+
+    setIsCreatingRide(true);
 
     try {
       setLoading(true);
@@ -405,9 +363,16 @@ const SearchScreen = ({ route }) => {
         totalFare,
       });
 
+      // Get current user data (might have been updated)
+      const currentUserData = useUserStore.getState().userData || userData;
+      if (!currentUserData || !currentUserData.id) {
+        redirectToLogin('Please log in to create a ride request');
+        return;
+      }
+
       // Create ride request data
       const rideRequestData = {
-        riderId: userData.id,
+        riderId: currentUserData.id,
         riderName: getUserName(),
         riderPhone: getUserPhone(),
         pickupLatitude: originCoordinates.latitude,
@@ -437,35 +402,66 @@ const SearchScreen = ({ route }) => {
       
       console.log('Ride request created successfully:', response);
 
-      // Set the current ride in the store
-      setCurrentRide(response);
+      // Extract response data - handle both response.data and direct response
+      const rideData = response?.data?.data || response?.data || response;
+      
+      // Extract ride ID - handle various response structures
+      const rideId = rideData?.id || rideData?.data?.id || response?.id || response?.data?.id;
+      
+      if (!rideId) {
+        console.error('Ride creation failed - no ride ID in response:', response);
+        throw new Error('Ride request creation failed - no response ID received');
+      }
 
-      // Only navigate if the ride request was created successfully
-      if (response && response.id) {
-        console.log('Navigating to RideSelection with params:', {
-          rideId: response.id,
+      // Create a proper ride object for the store
+      const rideObject = {
+        id: rideId,
+        ...rideData,
+        pickupAddress: rideData?.pickupAddress || originLocation,
+        dropOffAddress: rideData?.dropOffAddress || destinationLocation,
+        estimatedDistance: rideData?.estimatedDistance || distance,
+        estimatedDuration: rideData?.estimatedDuration || estimatedDuration,
+        totalFare: rideData?.totalFare || Math.round(totalFare),
+        vehicleType: rideData?.vehicleType || 'CAR',
+      };
+
+      // Set the current ride in the store BEFORE navigation
+      console.log('Setting current ride in store:', rideObject);
+      setCurrentRide(rideObject);
+
+      // Save destination location to history
+      if (rideData?.dropOffAddress || destinationLocation) {
+        await saveRideLocation({
+          id: rideId,
+          dropOffAddress: rideData?.dropOffAddress || destinationLocation,
+          dropOffLatitude: rideData?.dropOffLatitude || destinationCoordinates.latitude,
+          dropOffLongitude: rideData?.dropOffLongitude || destinationCoordinates.longitude,
+        });
+        // Refresh recent locations
+        loadRecentLocations();
+      }
+
+      console.log('Navigating to RideSelection with params:', {
+        rideId: rideId,
+        pickupAddress: originLocation,
+        destinationAddress: destinationLocation,
+        estimatedDistance: distance.toString(),
+        estimatedDuration: estimatedDuration.toString(),
+        totalFare: Math.round(totalFare).toString(),
+      });
+
+      // Navigate to RideSelection with ride data
+      router.push({
+        pathname: '/booking/RideSelection',
+        params: {
+          rideId: rideId,
           pickupAddress: originLocation,
           destinationAddress: destinationLocation,
           estimatedDistance: distance.toString(),
           estimatedDuration: estimatedDuration.toString(),
           totalFare: Math.round(totalFare).toString(),
-        });
-
-        // Navigate to RideSelection with ride data
-        router.push({
-          pathname: '/booking/RideSelection',
-          params: {
-            rideId: response.id,
-            pickupAddress: originLocation,
-            destinationAddress: destinationLocation,
-            estimatedDistance: distance.toString(),
-            estimatedDuration: estimatedDuration.toString(),
-            totalFare: Math.round(totalFare).toString(),
-          }
-        });
-      } else {
-        throw new Error('Ride request creation failed - no response ID received');
-      }
+        }
+      });
 
     } catch (error) {
       console.error('Error creating ride request:', error);
@@ -506,39 +502,12 @@ const SearchScreen = ({ route }) => {
       }
     } finally {
       setLoading(false);
+      setIsCreatingRide(false);
     }
   };
 
   const showRecentLocations = !originShowList && !dropShowList && !keyboardVisible;
   const canCreateRide = originLocation && destinationLocation && originCoordinates && destinationCoordinates;
-
-  // Auto-create ride request when both locations are selected
-  useEffect(() => {
-    if (canCreateRide && !loading && !isCreatingRide && !rideRequestCreated) {
-      console.log('Both locations selected, auto-creating ride request...');
-      // Add a small delay to ensure user has finished typing
-      const timer = setTimeout(async () => {
-        try {
-          setIsCreatingRide(true);
-          await handleCreateRideRequest();
-          setRideRequestCreated(true); // Mark that a ride request has been created
-          console.log('Ride request created successfully, navigation handled by handleCreateRideRequest');
-        } catch (error) {
-          console.error('Auto-creation failed:', error);
-          // Don't navigate if creation fails - error handling is done in handleCreateRideRequest
-        } finally {
-          setIsCreatingRide(false);
-        }
-      }, 1000); // 1 second delay
-      
-      return () => clearTimeout(timer);
-    }
-  }, [canCreateRide, loading, isCreatingRide, rideRequestCreated]);
-
-  // Reset ride request created state when locations change
-  useEffect(() => {
-    setRideRequestCreated(false);
-  }, [originLocation, destinationLocation]);
 
   return (
     <KeyboardAvoidingView
@@ -561,7 +530,17 @@ const SearchScreen = ({ route }) => {
           <View style={styles.placeholderButton} />
         </View>
 
+        {/* Initial Loading Overlay */}
+        {initialLoading && (
+          <View style={styles.initialLoadingContainer}>
+            <ActivityIndicator size="large" color="#FFD700" />
+            <Text style={styles.loadingText}>Getting your location...</Text>
+            <Text style={styles.loadingSubText}>Preparing map</Text>
+          </View>
+        )}
+
         {/* Content Container */}
+        {!initialLoading && (
         <View style={styles.contentContainer}>
           {/* Input Section */}
           <View style={styles.inputSection}>
@@ -689,10 +668,10 @@ const SearchScreen = ({ route }) => {
           )}
 
           {/* Recent Locations */}
-          {showRecentLocations && (
+          {showRecentLocations && recentLocations.length > 0 && (
             <View style={styles.recentLocationsContainer}>
                 {recentLocations.map((item, index) => (
-                  <View key={item.id}>
+                  <View key={item.id || index}>
                     <TouchableOpacity 
                       style={styles.recentLocationItem} 
                       onPress={() => handleRecentLocationPress(item)}
@@ -702,9 +681,9 @@ const SearchScreen = ({ route }) => {
                         <MaterialCommunityIcons name="clock-outline" size={22} color="#FFFFFF" />
                   </View>
                       <View style={styles.locationDetailsContainer}>
-                        <Text style={styles.locationName}>{item.name}</Text>
+                        <Text style={styles.locationName}>{item.name || item.address?.split(',')[0] || 'Location'}</Text>
                         <Text style={styles.locationAddress} numberOfLines={1}>
-                          {item.address}
+                          {item.address || item.name}
                         </Text>
                   </View>
                 </TouchableOpacity>
@@ -728,6 +707,14 @@ const SearchScreen = ({ route }) => {
               showsMyLocationButton={false}
               zoomControlEnabled={true}
               onRegionChangeComplete={handleRegionChange}
+              onMapReady={() => {
+                // Map component is ready - hide loading
+                if (initialLoading) {
+                  setTimeout(() => {
+                    setInitialLoading(false);
+                  }, 300);
+                }
+              }}
             />
                 {/* Center Pin */}
                 <View style={styles.centerPinContainer}>
@@ -738,7 +725,25 @@ const SearchScreen = ({ route }) => {
           </View>
         )}
         </View>
+        )}
 
+        {/* Continue Button - Fixed at bottom */}
+        {!initialLoading && (
+          <View style={styles.continueButtonContainer}>
+            <TriphButton
+              text={isCreatingRide ? 'Creating Ride...' : 'Continue'}
+              onPress={handleCreateRideRequest}
+              disabled={!canCreateRide || isCreatingRide || loading}
+              loading={isCreatingRide || loading}
+              bgColor={{
+                backgroundColor: canCreateRide && !isCreatingRide && !loading 
+                  ? '#FFD700' 
+                  : 'rgba(255, 215, 0, 0.5)'
+              }}
+              textColor={canCreateRide && !isCreatingRide && !loading ? '#000000' : '#666666'}
+            />
+          </View>
+        )}
 
         <Loader modalVisible={loading} setModalVisible={setLoading} />
       </View>
@@ -777,6 +782,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 90, // Add padding for Continue button
   },
   inputSection: {
     paddingHorizontal: 16,
@@ -905,6 +911,44 @@ const styles = StyleSheet.create({
     height: 12,
     backgroundColor: '#FF3B30',
     marginTop: -1,
+  },
+  initialLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  loadingSubText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  continueButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    backgroundColor: '#000000',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 10,
   },
 });
 

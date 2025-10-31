@@ -28,15 +28,31 @@ const useUserStore = create((set, get) => ({
       const storedData = await AsyncStorage.getItem('userDetail');
       if (storedData) {
         const userData = JSON.parse(storedData);
-        set({ 
-          userData: userData.user,
-          token: userData.token,
-          refreshToken: userData.refreshToken,
-          isAuthenticated: true,
-          loading: false 
-        });
-        return userData;
+        
+        // Validate that we have essential user data
+        if (userData && (userData.user || userData.token)) {
+          set({ 
+            userData: userData.user || userData,
+            token: userData.token || userData.accessToken,
+            refreshToken: userData.refreshToken,
+            isAuthenticated: true,
+            loading: false 
+          });
+          return userData;
+        } else {
+          // Invalid data structure, clear it
+          await AsyncStorage.removeItem('userDetail');
+          set({ 
+            userData: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            loading: false 
+          });
+          return null;
+        }
       } else {
+        // No user data found - this is normal if user hasn't logged in
         set({ 
           userData: null,
           token: null,
@@ -47,11 +63,22 @@ const useUserStore = create((set, get) => ({
         return null;
       }
     } catch (error) {
+      console.error('Error fetching user from storage:', error);
+      // Clear potentially corrupted data
+      try {
+        await AsyncStorage.removeItem('userDetail');
+      } catch (clearError) {
+        console.error('Error clearing corrupted user data:', clearError);
+      }
       set({ 
+        userData: null,
+        token: null,
+        refreshToken: null,
+        isAuthenticated: false,
         error: error.message, 
         loading: false 
       });
-      throw error;
+      return null;
     }
   },
 

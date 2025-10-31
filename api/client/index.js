@@ -129,13 +129,14 @@ api.interceptors.request.use(
           const token = parsedData.token || parsedData.accessToken;
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('Token attached to request:', config.url);
-          } else {
-            console.log('No token found in user data');
+            // Only log in debug mode or for important requests
+            if (__DEV__ && (config.url?.includes('/profile') || config.url?.includes('/ride-request'))) {
+              console.log('Token attached to request:', config.url);
+            }
           }
-        } else {
-          console.log('No user data found in AsyncStorage');
+          // Silently handle missing token - might be a public endpoint
         }
+        // Silently handle missing user data - user might not be logged in yet
       } catch (error) {
         console.error('Error retrieving token:', error);
       }
@@ -179,7 +180,16 @@ api.interceptors.response.use(
         console.log('Token expired or invalid, clearing user data');
         try {
           await AsyncStorage.removeItem('userDetail');
-          // You could also dispatch a logout action here if using Redux/Zustand
+          // Clear user store state
+          try {
+            const { default: useUserStore } = await import('../store/userStore');
+            useUserStore.getState().logout();
+          } catch (storeError) {
+            console.error('Error clearing user store:', storeError);
+          }
+          
+          // Note: Navigation should be handled by the component that receives this error
+          // Components should check for 401 and redirect to login
         } catch (storageError) {
           console.error('Error clearing user data:', storageError);
         }

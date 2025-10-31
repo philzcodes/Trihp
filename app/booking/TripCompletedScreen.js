@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { Colors, Fonts } from '../../constants';
+import { saveRideLocation } from '../../helper/locationHistory';
 import { showSucess } from '../../helper/Toaster';
 
 const TripCompletedScreen = () => {
@@ -68,6 +69,19 @@ const TripCompletedScreen = () => {
     console.log('TripCompletedScreen - Received data:', parsedData);
     setData(parsedData);
     dataParsedRef.current = true;
+
+    // Save destination location to history when trip is completed
+    const rideInfo = parsedData?.ride || parsedData?.data || {};
+    if (rideInfo.drop_location_name || rideInfo.dropOffAddress || rideInfo.drop_latitude) {
+      saveRideLocation({
+        id: rideInfo.id || rideInfo.rideId || Date.now().toString(),
+        dropOffAddress: rideInfo.drop_location_name || rideInfo.dropOffAddress || 'Destination',
+        dropOffLatitude: rideInfo.drop_latitude || rideInfo.dropOffLatitude,
+        dropOffLongitude: rideInfo.drop_longitude || rideInfo.dropOffLongitude,
+      }).catch(error => {
+        console.error('Error saving location to history:', error);
+      });
+    }
   }, []); // Empty dependency array - only run once
 
   const mapRef = useRef(null);
