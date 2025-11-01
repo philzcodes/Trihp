@@ -17,7 +17,7 @@ const Splash = () => {
       <Video
         source={require('../assets/Thrip.mp4')}
         style={styles.video}
-        resizeMode="cover"
+        resizeMode="contain"
         paused={false}
         repeat={false}
         onEnd={handleVideoFinish}
