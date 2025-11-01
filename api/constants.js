@@ -1,13 +1,13 @@
 // API Constants - Updated for Trihp backend
 // Production endpoint (commented out)
-// const prodUrl = 'https://trihp-system-backend.onrender.com/api/trihp/v1';
+const prodUrl = 'https://trihp-system-backend.onrender.com/api/trihp/v1';
 
 // Development endpoint
 
-const devUrl = 'http://10.216.76.57:3000/api/trihp/v1';
+// const devUrl = 'http://192.168.100.243:3000/api/trihp/v1';
 
 const Constant = {
-  baseUrl: devUrl,
+  baseUrl: prodUrl,
   // Auth endpoints
   register: 'auth',
   login: 'auth/login',
