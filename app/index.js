@@ -19,12 +19,12 @@ const Index = () => {
           router.replace('/Dashboard');
         } else {
           // User is not logged in, redirect to splash screen
-          router.replace('/Splash');
+          router.replace('/videoSplash');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
-        // On error, redirect to splash screen
-        router.replace('/Splash');
+        // On error, redirect to videoSplash screen
+        router.replace('/videoSplash');
       } finally {
         setIsLoading(false);
       }

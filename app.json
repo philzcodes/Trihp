@@ -21,10 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/icon.png",
-        // "backgroundImage": "./assets/images/android-icon-background.png",
-        // "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -66,21 +64,7 @@
           "locationWhenInUseUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map."
         }
       ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": false
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "targetSdkVersion": 35,
-            "compileSdkVersion": 35
-          }
-        }
-      ]
+      "react-native-video"
     ],
     "experiments": {
       "typedRoutes": true,
