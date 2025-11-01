@@ -67,6 +67,12 @@
         }
       ],
       [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

@@ -296,6 +296,18 @@ const Register = () => {
     return '';
   };
 
+  // Password requirements validation
+  const checkPasswordRequirements = (value) => {
+    return {
+      minLength: value.length >= 8,
+      hasUppercase: /[A-Z]/.test(value),
+      hasNumber: /[0-9]/.test(value),
+      hasSpecialChar: /[!@#$%^&*]/.test(value),
+    };
+  };
+
+  const passwordRequirements = checkPasswordRequirements(password);
+
   const validateConfirmPassword = (value, passwordValue) => {
     if (!value) {
       return 'Please confirm your password';
@@ -526,12 +538,70 @@ const Register = () => {
             <Ionicons 
               name={showPassword ? "eye-outline" : "eye-off-outline"} 
               size={22} 
-              color={Colors.grey8 || '#999'} 
+              color={Colors.whiteColor} 
             />
           </Pressable>
-          {errors.password ? (
-            <Text style={styles.errorText}>{errors.password}</Text>
-          ) : null}
+          
+          {/* Password Requirements List */}
+          {password && (
+            <View style={styles.passwordRequirementsContainer}>
+              <View style={styles.requirementItem}>
+                <Ionicons 
+                  name={passwordRequirements.minLength ? "checkmark-circle" : "ellipse-outline"} 
+                  size={18} 
+                  color={passwordRequirements.minLength ? "#4CAF50" : "#666666"} 
+                />
+                <Text style={[
+                  styles.requirementText,
+                  passwordRequirements.minLength && styles.requirementTextMet
+                ]}>
+                  At least 8 characters
+                </Text>
+              </View>
+              
+              <View style={styles.requirementItem}>
+                <Ionicons 
+                  name={passwordRequirements.hasUppercase ? "checkmark-circle" : "ellipse-outline"} 
+                  size={18} 
+                  color={passwordRequirements.hasUppercase ? "#4CAF50" : "#666666"} 
+                />
+                <Text style={[
+                  styles.requirementText,
+                  passwordRequirements.hasUppercase && styles.requirementTextMet
+                ]}>
+                  At least one uppercase letter
+                </Text>
+              </View>
+              
+              <View style={styles.requirementItem}>
+                <Ionicons 
+                  name={passwordRequirements.hasNumber ? "checkmark-circle" : "ellipse-outline"} 
+                  size={18} 
+                  color={passwordRequirements.hasNumber ? "#4CAF50" : "#666666"} 
+                />
+                <Text style={[
+                  styles.requirementText,
+                  passwordRequirements.hasNumber && styles.requirementTextMet
+                ]}>
+                  At least one number
+                </Text>
+              </View>
+              
+              <View style={styles.requirementItem}>
+                <Ionicons 
+                  name={passwordRequirements.hasSpecialChar ? "checkmark-circle" : "ellipse-outline"} 
+                  size={18} 
+                  color={passwordRequirements.hasSpecialChar ? "#4CAF50" : "#666666"} 
+                />
+                <Text style={[
+                  styles.requirementText,
+                  passwordRequirements.hasSpecialChar && styles.requirementTextMet
+                ]}>
+                  At least one special character (#$@&%)
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Confirm Password Input */}
@@ -792,6 +862,25 @@ const styles = StyleSheet.create({
     color: '#FF4444',
     marginTop: 5,
     marginLeft: 20,
+  },
+  passwordRequirementsContainer: {
+    marginTop: 12,
+    marginLeft: 20,
+    marginBottom: 5,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementText: {
+    ...Fonts.Regular,
+    fontSize: 13,
+    color: '#666666',
+    marginLeft: 10,
+  },
+  requirementTextMet: {
+    color: '#4CAF50',
   },
   eyeIcon: {
     position: 'absolute',
