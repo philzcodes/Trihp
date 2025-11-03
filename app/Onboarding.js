@@ -58,15 +58,15 @@ const Onboarding = () => {
                 transform: [{ translateX: carTranslateX }],
               }}
             >
-              <Image source={require('../assets/onboardingImages/OnboardingCar.png')} style={styles.carImage} />
+              <Image resizeMode='contain' source={require('../assets/onboardingImages/OnboardingCar.png')} style={styles.carImage} />
             </Animated.View>
              <View style={styles.dashedLineContainer}>
                {Array.from({ length: 15 }, (_, i) => (
                  <View key={i} style={styles.dash} />
                ))}
              </View>
-            <Text style={styles.subTitle}>Welcome to Trihp</Text>
-            <Text style={styles.tagline}>Where safety meets convenience</Text>
+            <View style={{width: '100%' ,flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}> <Text style={styles.subTitle}>Welcome to </Text> <Text style={{...Fonts.Medium, fontSize: 22, color: "yellow", fontWeight: 'bold'}}>T R I H P</Text></View>
+          {/* <Text style={styles.tagline}>Where safety meets convenience</Text> */}
           </View>
 
           <View style={styles.bottomTextContainer}>
