@@ -8,110 +8,203 @@ import { authAPI } from '../../api/services';
 import { BackButton, TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
-// Country data
+// Country data - Comprehensive list of all countries
 const countries = [
-  { code: 'NG', callingCode: '234', flag: '🇳🇬', name: 'Nigeria' },
-  { code: 'US', callingCode: '1', flag: '🇺🇸', name: 'United States' },
-  { code: 'GB', callingCode: '44', flag: '🇬🇧', name: 'United Kingdom' },
-  { code: 'CA', callingCode: '1', flag: '🇨🇦', name: 'Canada' },
-  { code: 'AU', callingCode: '61', flag: '🇦🇺', name: 'Australia' },
-  { code: 'DE', callingCode: '49', flag: '🇩🇪', name: 'Germany' },
-  { code: 'FR', callingCode: '33', flag: '🇫🇷', name: 'France' },
-  { code: 'IT', callingCode: '39', flag: '🇮🇹', name: 'Italy' },
-  { code: 'ES', callingCode: '34', flag: '🇪🇸', name: 'Spain' },
-  { code: 'NL', callingCode: '31', flag: '🇳🇱', name: 'Netherlands' },
-  { code: 'BE', callingCode: '32', flag: '🇧🇪', name: 'Belgium' },
-  { code: 'CH', callingCode: '41', flag: '🇨🇭', name: 'Switzerland' },
-  { code: 'AT', callingCode: '43', flag: '🇦🇹', name: 'Austria' },
-  { code: 'SE', callingCode: '46', flag: '🇸🇪', name: 'Sweden' },
-  { code: 'NO', callingCode: '47', flag: '🇳🇴', name: 'Norway' },
-  { code: 'DK', callingCode: '45', flag: '🇩🇰', name: 'Denmark' },
-  { code: 'FI', callingCode: '358', flag: '🇫🇮', name: 'Finland' },
-  { code: 'PL', callingCode: '48', flag: '🇵🇱', name: 'Poland' },
-  { code: 'CZ', callingCode: '420', flag: '🇨🇿', name: 'Czech Republic' },
-  { code: 'HU', callingCode: '36', flag: '🇭🇺', name: 'Hungary' },
-  { code: 'RO', callingCode: '40', flag: '🇷🇴', name: 'Romania' },
-  { code: 'BG', callingCode: '359', flag: '🇧🇬', name: 'Bulgaria' },
-  { code: 'GR', callingCode: '30', flag: '🇬🇷', name: 'Greece' },
-  { code: 'PT', callingCode: '351', flag: '🇵🇹', name: 'Portugal' },
-  { code: 'IE', callingCode: '353', flag: '🇮🇪', name: 'Ireland' },
-  { code: 'LU', callingCode: '352', flag: '🇱🇺', name: 'Luxembourg' },
-  { code: 'MT', callingCode: '356', flag: '🇲🇹', name: 'Malta' },
-  { code: 'CY', callingCode: '357', flag: '🇨🇾', name: 'Cyprus' },
-  { code: 'EE', callingCode: '372', flag: '🇪🇪', name: 'Estonia' },
-  { code: 'LV', callingCode: '371', flag: '🇱🇻', name: 'Latvia' },
-  { code: 'LT', callingCode: '370', flag: '🇱🇹', name: 'Lithuania' },
-  { code: 'SI', callingCode: '386', flag: '🇸🇮', name: 'Slovenia' },
-  { code: 'SK', callingCode: '421', flag: '🇸🇰', name: 'Slovakia' },
-  { code: 'HR', callingCode: '385', flag: '🇭🇷', name: 'Croatia' },
-  { code: 'IN', callingCode: '91', flag: '🇮🇳', name: 'India' },
-  { code: 'CN', callingCode: '86', flag: '🇨🇳', name: 'China' },
-  { code: 'JP', callingCode: '81', flag: '🇯🇵', name: 'Japan' },
-  { code: 'KR', callingCode: '82', flag: '🇰🇷', name: 'South Korea' },
-  { code: 'SG', callingCode: '65', flag: '🇸🇬', name: 'Singapore' },
-  { code: 'MY', callingCode: '60', flag: '🇲🇾', name: 'Malaysia' },
-  { code: 'TH', callingCode: '66', flag: '🇹🇭', name: 'Thailand' },
-  { code: 'PH', callingCode: '63', flag: '🇵🇭', name: 'Philippines' },
-  { code: 'ID', callingCode: '62', flag: '🇮🇩', name: 'Indonesia' },
-  { code: 'VN', callingCode: '84', flag: '🇻🇳', name: 'Vietnam' },
-  { code: 'BR', callingCode: '55', flag: '🇧🇷', name: 'Brazil' },
-  { code: 'AR', callingCode: '54', flag: '🇦🇷', name: 'Argentina' },
-  { code: 'MX', callingCode: '52', flag: '🇲🇽', name: 'Mexico' },
-  { code: 'CL', callingCode: '56', flag: '🇨🇱', name: 'Chile' },
-  { code: 'CO', callingCode: '57', flag: '🇨🇴', name: 'Colombia' },
-  { code: 'PE', callingCode: '51', flag: '🇵🇪', name: 'Peru' },
-  { code: 'ZA', callingCode: '27', flag: '🇿🇦', name: 'South Africa' },
-  { code: 'EG', callingCode: '20', flag: '🇪🇬', name: 'Egypt' },
-  { code: 'KE', callingCode: '254', flag: '🇰🇪', name: 'Kenya' },
-  { code: 'GH', callingCode: '233', flag: '🇬🇭', name: 'Ghana' },
-  { code: 'MA', callingCode: '212', flag: '🇲🇦', name: 'Morocco' },
-  { code: 'TN', callingCode: '216', flag: '🇹🇳', name: 'Tunisia' },
+  { code: 'AF', callingCode: '93', flag: '🇦🇫', name: 'Afghanistan' },
+  { code: 'AL', callingCode: '355', flag: '🇦🇱', name: 'Albania' },
   { code: 'DZ', callingCode: '213', flag: '🇩🇿', name: 'Algeria' },
-  { code: 'LY', callingCode: '218', flag: '🇱🇾', name: 'Libya' },
-  { code: 'SD', callingCode: '249', flag: '🇸🇩', name: 'Sudan' },
-  { code: 'ET', callingCode: '251', flag: '🇪🇹', name: 'Ethiopia' },
-  { code: 'UG', callingCode: '256', flag: '🇺🇬', name: 'Uganda' },
-  { code: 'TZ', callingCode: '255', flag: '🇹🇿', name: 'Tanzania' },
-  { code: 'RW', callingCode: '250', flag: '🇷🇼', name: 'Rwanda' },
-  { code: 'BI', callingCode: '257', flag: '🇧🇮', name: 'Burundi' },
-  { code: 'MW', callingCode: '265', flag: '🇲🇼', name: 'Malawi' },
-  { code: 'ZM', callingCode: '260', flag: '🇿🇲', name: 'Zambia' },
-  { code: 'ZW', callingCode: '263', flag: '🇿🇼', name: 'Zimbabwe' },
+  { code: 'AD', callingCode: '376', flag: '🇦🇩', name: 'Andorra' },
+  { code: 'AO', callingCode: '244', flag: '🇦🇴', name: 'Angola' },
+  { code: 'AG', callingCode: '1268', flag: '🇦🇬', name: 'Antigua and Barbuda' },
+  { code: 'AR', callingCode: '54', flag: '🇦🇷', name: 'Argentina' },
+  { code: 'AM', callingCode: '374', flag: '🇦🇲', name: 'Armenia' },
+  { code: 'AU', callingCode: '61', flag: '🇦🇺', name: 'Australia' },
+  { code: 'AT', callingCode: '43', flag: '🇦🇹', name: 'Austria' },
+  { code: 'AZ', callingCode: '994', flag: '🇦🇿', name: 'Azerbaijan' },
+  { code: 'BS', callingCode: '1242', flag: '🇧🇸', name: 'Bahamas' },
+  { code: 'BH', callingCode: '973', flag: '🇧🇭', name: 'Bahrain' },
+  { code: 'BD', callingCode: '880', flag: '🇧🇩', name: 'Bangladesh' },
+  { code: 'BB', callingCode: '1246', flag: '🇧🇧', name: 'Barbados' },
+  { code: 'BY', callingCode: '375', flag: '🇧🇾', name: 'Belarus' },
+  { code: 'BE', callingCode: '32', flag: '🇧🇪', name: 'Belgium' },
+  { code: 'BZ', callingCode: '501', flag: '🇧🇿', name: 'Belize' },
+  { code: 'BJ', callingCode: '229', flag: '🇧🇯', name: 'Benin' },
+  { code: 'BT', callingCode: '975', flag: '🇧🇹', name: 'Bhutan' },
+  { code: 'BO', callingCode: '591', flag: '🇧🇴', name: 'Bolivia' },
+  { code: 'BA', callingCode: '387', flag: '🇧🇦', name: 'Bosnia and Herzegovina' },
   { code: 'BW', callingCode: '267', flag: '🇧🇼', name: 'Botswana' },
-  { code: 'NA', callingCode: '264', flag: '🇳🇦', name: 'Namibia' },
-  { code: 'SZ', callingCode: '268', flag: '🇸🇿', name: 'Eswatini' },
-  { code: 'LS', callingCode: '266', flag: '🇱🇸', name: 'Lesotho' },
-  { code: 'MG', callingCode: '261', flag: '🇲🇬', name: 'Madagascar' },
-  { code: 'MU', callingCode: '230', flag: '🇲🇺', name: 'Mauritius' },
-  { code: 'SC', callingCode: '248', flag: '🇸🇨', name: 'Seychelles' },
-  { code: 'KM', callingCode: '269', flag: '🇰🇲', name: 'Comoros' },
-  { code: 'DJ', callingCode: '253', flag: '🇩🇯', name: 'Djibouti' },
-  { code: 'SO', callingCode: '252', flag: '🇸🇴', name: 'Somalia' },
-  { code: 'ER', callingCode: '291', flag: '🇪🇷', name: 'Eritrea' },
-  { code: 'SS', callingCode: '211', flag: '🇸🇸', name: 'South Sudan' },
+  { code: 'BR', callingCode: '55', flag: '🇧🇷', name: 'Brazil' },
+  { code: 'BN', callingCode: '673', flag: '🇧🇳', name: 'Brunei' },
+  { code: 'BG', callingCode: '359', flag: '🇧🇬', name: 'Bulgaria' },
+  { code: 'BF', callingCode: '226', flag: '🇧🇫', name: 'Burkina Faso' },
+  { code: 'BI', callingCode: '257', flag: '🇧🇮', name: 'Burundi' },
+  { code: 'KH', callingCode: '855', flag: '🇰🇭', name: 'Cambodia' },
+  { code: 'CM', callingCode: '237', flag: '🇨🇲', name: 'Cameroon' },
+  { code: 'CA', callingCode: '1', flag: '🇨🇦', name: 'Canada' },
+  { code: 'CV', callingCode: '238', flag: '🇨🇻', name: 'Cape Verde' },
   { code: 'CF', callingCode: '236', flag: '🇨🇫', name: 'Central African Republic' },
   { code: 'TD', callingCode: '235', flag: '🇹🇩', name: 'Chad' },
-  { code: 'CM', callingCode: '237', flag: '🇨🇲', name: 'Cameroon' },
-  { code: 'GQ', callingCode: '240', flag: '🇬🇶', name: 'Equatorial Guinea' },
-  { code: 'GA', callingCode: '241', flag: '🇬🇦', name: 'Gabon' },
+  { code: 'CL', callingCode: '56', flag: '🇨🇱', name: 'Chile' },
+  { code: 'CN', callingCode: '86', flag: '🇨🇳', name: 'China' },
+  { code: 'CO', callingCode: '57', flag: '🇨🇴', name: 'Colombia' },
+  { code: 'KM', callingCode: '269', flag: '🇰🇲', name: 'Comoros' },
   { code: 'CG', callingCode: '242', flag: '🇨🇬', name: 'Republic of the Congo' },
   { code: 'CD', callingCode: '243', flag: '🇨🇩', name: 'Democratic Republic of the Congo' },
-  { code: 'AO', callingCode: '244', flag: '🇦🇴', name: 'Angola' },
-  { code: 'ST', callingCode: '239', flag: '🇸🇹', name: 'São Tomé and Príncipe' },
-  { code: 'CV', callingCode: '238', flag: '🇨🇻', name: 'Cape Verde' },
+  { code: 'CR', callingCode: '506', flag: '🇨🇷', name: 'Costa Rica' },
+  { code: 'CI', callingCode: '225', flag: '🇨🇮', name: 'Ivory Coast' },
+  { code: 'HR', callingCode: '385', flag: '🇭🇷', name: 'Croatia' },
+  { code: 'CU', callingCode: '53', flag: '🇨🇺', name: 'Cuba' },
+  { code: 'CY', callingCode: '357', flag: '🇨🇾', name: 'Cyprus' },
+  { code: 'CZ', callingCode: '420', flag: '🇨🇿', name: 'Czech Republic' },
+  { code: 'DK', callingCode: '45', flag: '🇩🇰', name: 'Denmark' },
+  { code: 'DJ', callingCode: '253', flag: '🇩🇯', name: 'Djibouti' },
+  { code: 'DM', callingCode: '1767', flag: '🇩🇲', name: 'Dominica' },
+  { code: 'DO', callingCode: '1809', flag: '🇩🇴', name: 'Dominican Republic' },
+  { code: 'EC', callingCode: '593', flag: '🇪🇨', name: 'Ecuador' },
+  { code: 'EG', callingCode: '20', flag: '🇪🇬', name: 'Egypt' },
+  { code: 'SV', callingCode: '503', flag: '🇸🇻', name: 'El Salvador' },
+  { code: 'GQ', callingCode: '240', flag: '🇬🇶', name: 'Equatorial Guinea' },
+  { code: 'ER', callingCode: '291', flag: '🇪🇷', name: 'Eritrea' },
+  { code: 'EE', callingCode: '372', flag: '🇪🇪', name: 'Estonia' },
+  { code: 'SZ', callingCode: '268', flag: '🇸🇿', name: 'Eswatini' },
+  { code: 'ET', callingCode: '251', flag: '🇪🇹', name: 'Ethiopia' },
+  { code: 'FJ', callingCode: '679', flag: '🇫🇯', name: 'Fiji' },
+  { code: 'FI', callingCode: '358', flag: '🇫🇮', name: 'Finland' },
+  { code: 'FR', callingCode: '33', flag: '🇫🇷', name: 'France' },
+  { code: 'GA', callingCode: '241', flag: '🇬🇦', name: 'Gabon' },
   { code: 'GM', callingCode: '220', flag: '🇬🇲', name: 'Gambia' },
-  { code: 'SN', callingCode: '221', flag: '🇸🇳', name: 'Senegal' },
+  { code: 'GE', callingCode: '995', flag: '🇬🇪', name: 'Georgia' },
+  { code: 'DE', callingCode: '49', flag: '🇩🇪', name: 'Germany' },
+  { code: 'GH', callingCode: '233', flag: '🇬🇭', name: 'Ghana' },
+  { code: 'GR', callingCode: '30', flag: '🇬🇷', name: 'Greece' },
+  { code: 'GD', callingCode: '1473', flag: '🇬🇩', name: 'Grenada' },
+  { code: 'GT', callingCode: '502', flag: '🇬🇹', name: 'Guatemala' },
   { code: 'GN', callingCode: '224', flag: '🇬🇳', name: 'Guinea' },
   { code: 'GW', callingCode: '245', flag: '🇬🇼', name: 'Guinea-Bissau' },
-  { code: 'SL', callingCode: '232', flag: '🇸🇱', name: 'Sierra Leone' },
+  { code: 'GY', callingCode: '592', flag: '🇬🇾', name: 'Guyana' },
+  { code: 'HT', callingCode: '509', flag: '🇭🇹', name: 'Haiti' },
+  { code: 'HN', callingCode: '504', flag: '🇭🇳', name: 'Honduras' },
+  { code: 'HU', callingCode: '36', flag: '🇭🇺', name: 'Hungary' },
+  { code: 'IS', callingCode: '354', flag: '🇮🇸', name: 'Iceland' },
+  { code: 'IN', callingCode: '91', flag: '🇮🇳', name: 'India' },
+  { code: 'ID', callingCode: '62', flag: '🇮🇩', name: 'Indonesia' },
+  { code: 'IR', callingCode: '98', flag: '🇮🇷', name: 'Iran' },
+  { code: 'IQ', callingCode: '964', flag: '🇮🇶', name: 'Iraq' },
+  { code: 'IE', callingCode: '353', flag: '🇮🇪', name: 'Ireland' },
+  { code: 'IL', callingCode: '972', flag: '🇮🇱', name: 'Israel' },
+  { code: 'IT', callingCode: '39', flag: '🇮🇹', name: 'Italy' },
+  { code: 'JM', callingCode: '1876', flag: '🇯🇲', name: 'Jamaica' },
+  { code: 'JP', callingCode: '81', flag: '🇯🇵', name: 'Japan' },
+  { code: 'JO', callingCode: '962', flag: '🇯🇴', name: 'Jordan' },
+  { code: 'KZ', callingCode: '7', flag: '🇰🇿', name: 'Kazakhstan' },
+  { code: 'KE', callingCode: '254', flag: '🇰🇪', name: 'Kenya' },
+  { code: 'KI', callingCode: '686', flag: '🇰🇮', name: 'Kiribati' },
+  { code: 'KP', callingCode: '850', flag: '🇰🇵', name: 'North Korea' },
+  { code: 'KR', callingCode: '82', flag: '🇰🇷', name: 'South Korea' },
+  { code: 'KW', callingCode: '965', flag: '🇰🇼', name: 'Kuwait' },
+  { code: 'KG', callingCode: '996', flag: '🇰🇬', name: 'Kyrgyzstan' },
+  { code: 'LA', callingCode: '856', flag: '🇱🇦', name: 'Laos' },
+  { code: 'LV', callingCode: '371', flag: '🇱🇻', name: 'Latvia' },
+  { code: 'LB', callingCode: '961', flag: '🇱🇧', name: 'Lebanon' },
+  { code: 'LS', callingCode: '266', flag: '🇱🇸', name: 'Lesotho' },
   { code: 'LR', callingCode: '231', flag: '🇱🇷', name: 'Liberia' },
-  { code: 'CI', callingCode: '225', flag: '🇨🇮', name: 'Ivory Coast' },
+  { code: 'LY', callingCode: '218', flag: '🇱🇾', name: 'Libya' },
+  { code: 'LI', callingCode: '423', flag: '🇱🇮', name: 'Liechtenstein' },
+  { code: 'LT', callingCode: '370', flag: '🇱🇹', name: 'Lithuania' },
+  { code: 'LU', callingCode: '352', flag: '🇱🇺', name: 'Luxembourg' },
+  { code: 'MG', callingCode: '261', flag: '🇲🇬', name: 'Madagascar' },
+  { code: 'MW', callingCode: '265', flag: '🇲🇼', name: 'Malawi' },
+  { code: 'MY', callingCode: '60', flag: '🇲🇾', name: 'Malaysia' },
+  { code: 'MV', callingCode: '960', flag: '🇲🇻', name: 'Maldives' },
   { code: 'ML', callingCode: '223', flag: '🇲🇱', name: 'Mali' },
-  { code: 'BF', callingCode: '226', flag: '🇧🇫', name: 'Burkina Faso' },
+  { code: 'MT', callingCode: '356', flag: '🇲🇹', name: 'Malta' },
+  { code: 'MH', callingCode: '692', flag: '🇲🇭', name: 'Marshall Islands' },
+  { code: 'MR', callingCode: '222', flag: '🇲🇷', name: 'Mauritania' },
+  { code: 'MU', callingCode: '230', flag: '🇲🇺', name: 'Mauritius' },
+  { code: 'MX', callingCode: '52', flag: '🇲🇽', name: 'Mexico' },
+  { code: 'FM', callingCode: '691', flag: '🇫🇲', name: 'Micronesia' },
+  { code: 'MD', callingCode: '373', flag: '🇲🇩', name: 'Moldova' },
+  { code: 'MC', callingCode: '377', flag: '🇲🇨', name: 'Monaco' },
+  { code: 'MN', callingCode: '976', flag: '🇲🇳', name: 'Mongolia' },
+  { code: 'ME', callingCode: '382', flag: '🇲🇪', name: 'Montenegro' },
+  { code: 'MA', callingCode: '212', flag: '🇲🇦', name: 'Morocco' },
+  { code: 'MZ', callingCode: '258', flag: '🇲🇿', name: 'Mozambique' },
+  { code: 'MM', callingCode: '95', flag: '🇲🇲', name: 'Myanmar' },
+  { code: 'NA', callingCode: '264', flag: '🇳🇦', name: 'Namibia' },
+  { code: 'NR', callingCode: '674', flag: '🇳🇷', name: 'Nauru' },
+  { code: 'NP', callingCode: '977', flag: '🇳🇵', name: 'Nepal' },
+  { code: 'NL', callingCode: '31', flag: '🇳🇱', name: 'Netherlands' },
+  { code: 'NZ', callingCode: '64', flag: '🇳🇿', name: 'New Zealand' },
+  { code: 'NI', callingCode: '505', flag: '🇳🇮', name: 'Nicaragua' },
   { code: 'NE', callingCode: '227', flag: '🇳🇪', name: 'Niger' },
   { code: 'NG', callingCode: '234', flag: '🇳🇬', name: 'Nigeria' },
-  { code: 'BJ', callingCode: '229', flag: '🇧🇯', name: 'Benin' },
+  { code: 'MK', callingCode: '389', flag: '🇲🇰', name: 'North Macedonia' },
+  { code: 'NO', callingCode: '47', flag: '🇳🇴', name: 'Norway' },
+  { code: 'OM', callingCode: '968', flag: '🇴🇲', name: 'Oman' },
+  { code: 'PK', callingCode: '92', flag: '🇵🇰', name: 'Pakistan' },
+  { code: 'PW', callingCode: '680', flag: '🇵🇼', name: 'Palau' },
+  { code: 'PA', callingCode: '507', flag: '🇵🇦', name: 'Panama' },
+  { code: 'PG', callingCode: '675', flag: '🇵🇬', name: 'Papua New Guinea' },
+  { code: 'PY', callingCode: '595', flag: '🇵🇾', name: 'Paraguay' },
+  { code: 'PE', callingCode: '51', flag: '🇵🇪', name: 'Peru' },
+  { code: 'PH', callingCode: '63', flag: '🇵🇭', name: 'Philippines' },
+  { code: 'PL', callingCode: '48', flag: '🇵🇱', name: 'Poland' },
+  { code: 'PT', callingCode: '351', flag: '🇵🇹', name: 'Portugal' },
+  { code: 'QA', callingCode: '974', flag: '🇶🇦', name: 'Qatar' },
+  { code: 'RO', callingCode: '40', flag: '🇷🇴', name: 'Romania' },
+  { code: 'RU', callingCode: '7', flag: '🇷🇺', name: 'Russia' },
+  { code: 'RW', callingCode: '250', flag: '🇷🇼', name: 'Rwanda' },
+  { code: 'KN', callingCode: '1869', flag: '🇰🇳', name: 'Saint Kitts and Nevis' },
+  { code: 'LC', callingCode: '1758', flag: '🇱🇨', name: 'Saint Lucia' },
+  { code: 'VC', callingCode: '1784', flag: '🇻🇨', name: 'Saint Vincent and the Grenadines' },
+  { code: 'WS', callingCode: '685', flag: '🇼🇸', name: 'Samoa' },
+  { code: 'SM', callingCode: '378', flag: '🇸🇲', name: 'San Marino' },
+  { code: 'ST', callingCode: '239', flag: '🇸🇹', name: 'São Tomé and Príncipe' },
+  { code: 'SA', callingCode: '966', flag: '🇸🇦', name: 'Saudi Arabia' },
+  { code: 'SN', callingCode: '221', flag: '🇸🇳', name: 'Senegal' },
+  { code: 'RS', callingCode: '381', flag: '🇷🇸', name: 'Serbia' },
+  { code: 'SC', callingCode: '248', flag: '🇸🇨', name: 'Seychelles' },
+  { code: 'SL', callingCode: '232', flag: '🇸🇱', name: 'Sierra Leone' },
+  { code: 'SG', callingCode: '65', flag: '🇸🇬', name: 'Singapore' },
+  { code: 'SK', callingCode: '421', flag: '🇸🇰', name: 'Slovakia' },
+  { code: 'SI', callingCode: '386', flag: '🇸🇮', name: 'Slovenia' },
+  { code: 'SB', callingCode: '677', flag: '🇸🇧', name: 'Solomon Islands' },
+  { code: 'SO', callingCode: '252', flag: '🇸🇴', name: 'Somalia' },
+  { code: 'ZA', callingCode: '27', flag: '🇿🇦', name: 'South Africa' },
+  { code: 'SS', callingCode: '211', flag: '🇸🇸', name: 'South Sudan' },
+  { code: 'ES', callingCode: '34', flag: '🇪🇸', name: 'Spain' },
+  { code: 'LK', callingCode: '94', flag: '🇱🇰', name: 'Sri Lanka' },
+  { code: 'SD', callingCode: '249', flag: '🇸🇩', name: 'Sudan' },
+  { code: 'SR', callingCode: '597', flag: '🇸🇷', name: 'Suriname' },
+  { code: 'SE', callingCode: '46', flag: '🇸🇪', name: 'Sweden' },
+  { code: 'CH', callingCode: '41', flag: '🇨🇭', name: 'Switzerland' },
+  { code: 'SY', callingCode: '963', flag: '🇸🇾', name: 'Syria' },
+  { code: 'TW', callingCode: '886', flag: '🇹🇼', name: 'Taiwan' },
+  { code: 'TJ', callingCode: '992', flag: '🇹🇯', name: 'Tajikistan' },
+  { code: 'TZ', callingCode: '255', flag: '🇹🇿', name: 'Tanzania' },
+  { code: 'TH', callingCode: '66', flag: '🇹🇭', name: 'Thailand' },
+  { code: 'TL', callingCode: '670', flag: '🇹🇱', name: 'Timor-Leste' },
   { code: 'TG', callingCode: '228', flag: '🇹🇬', name: 'Togo' },
+  { code: 'TO', callingCode: '676', flag: '🇹🇴', name: 'Tonga' },
+  { code: 'TT', callingCode: '1868', flag: '🇹🇹', name: 'Trinidad and Tobago' },
+  { code: 'TN', callingCode: '216', flag: '🇹🇳', name: 'Tunisia' },
+  { code: 'TR', callingCode: '90', flag: '🇹🇷', name: 'Turkey' },
+  { code: 'TM', callingCode: '993', flag: '🇹🇲', name: 'Turkmenistan' },
+  { code: 'TV', callingCode: '688', flag: '🇹🇻', name: 'Tuvalu' },
+  { code: 'UG', callingCode: '256', flag: '🇺🇬', name: 'Uganda' },
+  { code: 'UA', callingCode: '380', flag: '🇺🇦', name: 'Ukraine' },
+  { code: 'AE', callingCode: '971', flag: '🇦🇪', name: 'United Arab Emirates' },
+  { code: 'GB', callingCode: '44', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: 'US', callingCode: '1', flag: '🇺🇸', name: 'United States' },
+  { code: 'UY', callingCode: '598', flag: '🇺🇾', name: 'Uruguay' },
+  { code: 'UZ', callingCode: '998', flag: '🇺🇿', name: 'Uzbekistan' },
+  { code: 'VU', callingCode: '678', flag: '🇻🇺', name: 'Vanuatu' },
+  { code: 'VA', callingCode: '39', flag: '🇻🇦', name: 'Vatican City' },
+  { code: 'VE', callingCode: '58', flag: '🇻🇪', name: 'Venezuela' },
+  { code: 'VN', callingCode: '84', flag: '🇻🇳', name: 'Vietnam' },
+  { code: 'YE', callingCode: '967', flag: '🇾🇪', name: 'Yemen' },
+  { code: 'ZM', callingCode: '260', flag: '🇿🇲', name: 'Zambia' },
+  { code: 'ZW', callingCode: '263', flag: '🇿🇼', name: 'Zimbabwe' },
 ];
 
 // Helper function to format error messages (handles arrays and objects)
@@ -160,6 +253,7 @@ const Register = () => {
   });
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [countrySearchQuery, setCountrySearchQuery] = useState('');
   
   // Validation errors state
   const [errors, setErrors] = useState({
@@ -286,7 +380,17 @@ const Register = () => {
   const selectCountry = (country) => {
     setSelectedCountry(country);
     setShowCountryModal(false);
+    setCountrySearchQuery(''); // Clear search when country is selected
   };
+
+  // Filter countries based on search query
+  const filteredCountries = countrySearchQuery
+    ? countries.filter(country => 
+        country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
+        country.callingCode.includes(countrySearchQuery) ||
+        country.code.toLowerCase().includes(countrySearchQuery.toLowerCase())
+      )
+    : countries;
 
   // Validation functions
   const validatePhoneNumber = (value) => {
@@ -770,15 +874,39 @@ const Register = () => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Country</Text>
               <TouchableOpacity
-                onPress={() => setShowCountryModal(false)}
+                onPress={() => {
+                  setShowCountryModal(false);
+                  setCountrySearchQuery(''); // Clear search when modal closes
+                }}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color={Colors.whiteColor} />
               </TouchableOpacity>
             </View>
             
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={Colors.grey8 || '#999'} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search country..."
+                placeholderTextColor={Colors.grey8 || '#999'}
+                value={countrySearchQuery}
+                onChangeText={setCountrySearchQuery}
+                autoCapitalize="none"
+              />
+              {countrySearchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setCountrySearchQuery('')}
+                  style={styles.clearButton}
+                >
+                  <Ionicons name="close-circle" size={20} color={Colors.grey8 || '#999'} />
+                </TouchableOpacity>
+              )}
+            </View>
+            
             <FlatList
-              data={countries}
+              data={filteredCountries}
               keyExtractor={(item) => item.code}
               style={styles.countryList}
               showsVerticalScrollIndicator={false}
@@ -1022,6 +1150,30 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 5,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.grey11 || '#2A2A2A',
+    borderRadius: 25,
+    marginHorizontal: 20,
+    marginVertical: 15,
+    paddingHorizontal: 15,
+    height: 50,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    ...Fonts.Regular,
+    color: Colors.whiteColor || '#FFFFFF',
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  clearButton: {
+    padding: 5,
+    marginLeft: 10,
   },
   countryList: {
     maxHeight: 400,

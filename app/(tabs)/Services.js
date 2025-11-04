@@ -50,11 +50,35 @@ const Services = () => {
     },
   ];
 
+  // Map service names to vehicle types used by the backend
+  const getVehicleType = (serviceName) => {
+    const serviceNameLower = serviceName.toLowerCase();
+    if (serviceNameLower.includes('motorcycle')) return 'BIKE';
+    if (serviceNameLower.includes('keke')) return 'KEKE';
+    if (serviceNameLower.includes('lite')) return 'LITE';
+    if (serviceNameLower.includes('smooth')) return 'CAR';
+    if (serviceNameLower.includes('suv')) return 'SUV';
+    if (serviceNameLower.includes('luxe')) return 'LUXE';
+    return 'CAR'; // Default fallback
+  };
+
   const handleSelectedRideType = async (rideType) => {
     if (rideType) {
       try {
+        // Save the selected ride type to AsyncStorage
         await AsyncStorage.setItem('selectedRideType', JSON.stringify(rideType));
-        router.push('/search-ride');
+        
+        // Map service to vehicle type
+        const vehicleType = getVehicleType(rideType.value);
+        
+        // Navigate to SearchScreen with the selected vehicle type
+        router.push({
+          pathname: '/booking/SearchScreen',
+          params: {
+            selectedVehicleType: vehicleType,
+            selectedServiceName: rideType.value
+          }
+        });
       } catch (error) {
         console.error('Error saving ride type:', error);
       }

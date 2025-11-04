@@ -53,7 +53,7 @@ const DashboardHeader = () => {
     <View style={{ marginTop: insets.top || 20 }}>
       <View style={[styles.container, { paddingBottom: 15 }]}>
         <View style={styles.container}>
-          <Pressable onPress={() => router.push('/profile')}>
+          <Pressable onPress={() => router.push('/(tabs)/Profile')}>
             {user?.profileImageUri ? (
               <View style={styles.image}>
                 <Image

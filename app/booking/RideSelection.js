@@ -103,6 +103,9 @@ const RideSelection = () => {
     },
   ];
 
+  // Combine all vehicles for searching
+  const allVehicles = [...vehicles, ...moreVehicles];
+
   // Dummy driver markers for the map
   const dummyDrivers = [
     { latitude: 8.4876, longitude: -13.2299, id: 1, vehicle_category_id: 1 },
@@ -413,7 +416,6 @@ const RideSelection = () => {
       
       // If specific vehicles requested, only calculate those
       // Otherwise calculate all (but this should be rare)
-      const allVehicles = [...vehicles, ...moreVehicles];
       const vehicleTypes = vehicleTypesToCalculate || allVehicles.map(v => v.type);
       
       console.log(`Calculating pricing for ${vehicleTypes.length} vehicle(s)...`);
@@ -652,12 +654,33 @@ const RideSelection = () => {
     };
   }, []);
 
+  // Auto-select vehicle based on rideData.vehicleType (from Services page selection)
+  useEffect(() => {
+    if (rideData?.vehicleType && !selectedVehicle) {
+      const matchingVehicle = allVehicles.find(v => v.type === rideData.vehicleType);
+      if (matchingVehicle) {
+        console.log('Auto-selecting vehicle based on rideData:', matchingVehicle.type);
+        setSelectedVehicle(matchingVehicle);
+      }
+    }
+  }, [rideData?.vehicleType]);
+
   // Simulate loading
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) {
         setLoading(false);
-        setSelectedVehicle(vehicles[0]); // Select first vehicle by default
+        // Only set default if no vehicle was selected from rideData
+        if (!selectedVehicle && rideData?.vehicleType) {
+          const matchingVehicle = allVehicles.find(v => v.type === rideData.vehicleType);
+          if (matchingVehicle) {
+            setSelectedVehicle(matchingVehicle);
+          } else {
+            setSelectedVehicle(vehicles[0]); // Fallback to first vehicle
+          }
+        } else if (!selectedVehicle) {
+          setSelectedVehicle(vehicles[0]); // Select first vehicle by default
+        }
       }
     }, 1000);
 

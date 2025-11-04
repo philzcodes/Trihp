@@ -13,7 +13,7 @@ import {
 import { authAPI } from '../../api/services';
 import { Colors, Fonts } from '../../constants';
 
-const INITIAL_TIMER = 60;
+const INITIAL_TIMER = 900; // 15 minutes in seconds
 
 /**
  * Custom hook for countdown timer logic.
@@ -157,7 +157,12 @@ const OTP = () => {
 
   const resendOtp = async () => {
     if (timerActive) {
-      Alert.alert('Wait', `You can resend the code in ${secondsLeft} seconds.`);
+      const minutes = Math.floor(secondsLeft / 60);
+      const seconds = secondsLeft % 60;
+      const timeString = minutes > 0 
+        ? `${minutes} minute${minutes > 1 ? 's' : ''} ${seconds} second${seconds !== 1 ? 's' : ''}`
+        : `${seconds} second${seconds !== 1 ? 's' : ''}`;
+      Alert.alert('Wait', `You can resend the code in ${timeString}.`);
       return;
     }
 
@@ -187,6 +192,13 @@ const OTP = () => {
   };
 
   const contactInfo = maskEmail(email); 
+
+  // Format seconds to MM:SS format
+  const formatTime = (totalSeconds) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -230,7 +242,7 @@ const OTP = () => {
 
         {/* Timer Text */}
         <Text style={styles.timerText}>
-          Expires in {secondsLeft}s
+          Expires in {formatTime(secondsLeft)}
         </Text>
 
         {/* Custom Submit/TriphButton - Styled to match the image */}

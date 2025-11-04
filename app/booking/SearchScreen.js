@@ -92,6 +92,9 @@ const SearchScreen = ({ route }) => {
 
   // Removed auto-navigation - now using Continue button for user control
 
+  // Get selected vehicle type from route params (set when coming from Services page)
+  const selectedVehicleType = route?.params?.selectedVehicleType || null;
+
   useEffect(() => {
     if (route?.params?.stops && Array.isArray(route.params.stops)) {
       setStops(route.params.stops);
@@ -382,7 +385,7 @@ const SearchScreen = ({ route }) => {
         dropOffLatitude: destinationCoordinates.latitude,
         dropOffLongitude: destinationCoordinates.longitude,
         dropOffAddress: destinationLocation,
-        vehicleType: 'CAR', // Default vehicle type
+        vehicleType: selectedVehicleType || 'CAR', // Use selected vehicle type from Services page, or default to CAR
         estimatedDistance: distance,
         estimatedDuration: estimatedDuration,
         baseFare: baseFare,
@@ -423,7 +426,7 @@ const SearchScreen = ({ route }) => {
         estimatedDistance: rideData?.estimatedDistance || distance,
         estimatedDuration: rideData?.estimatedDuration || estimatedDuration,
         totalFare: rideData?.totalFare || Math.round(totalFare),
-        vehicleType: rideData?.vehicleType || 'CAR',
+        vehicleType: rideData?.vehicleType || selectedVehicleType || 'CAR',
       };
 
       // Set the current ride in the store BEFORE navigation
