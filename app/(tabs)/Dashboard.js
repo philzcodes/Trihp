@@ -48,12 +48,12 @@ const Dashboard = () => {
     },
     {
       id: 2,
-      image: require('../../assets/images/banner2.jpg'), // You can replace with different images
+      image: require('../../assets/images/banner1.jpg'), // You can replace with different images
       title: "Explore the City"
     },
     {
       id: 3,
-      image: require('../../assets/images/banner.jpg'), // You can replace with different images
+      image: require('../../assets/images/banner2.jpg'), // You can replace with different images
       title: "Safe & Reliable"
     }
   ];
@@ -80,7 +80,7 @@ const Dashboard = () => {
     <View style={styles.bannerContainer}>
       <Image 
         source={item.image} 
-        resizeMode="cover" 
+        resizeMode="contain" 
         style={styles.bannerImage} 
       />
     </View>
