@@ -65,7 +65,7 @@ const Onboarding = () => {
                  <View key={i} style={styles.dash} />
                ))}
              </View>
-            <View style={{width: '100%' ,flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}> <Text style={styles.subTitle}>Welcome to </Text> <Text style={{...Fonts.Medium, fontSize: 22, color: "yellow", fontWeight: 'bold'}}>T R I H P</Text></View>
+            <View style={{width: '100%' ,flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}> <Text style={styles.subTitle}>Welcome to </Text> <Text style={{fontFamily: 'Roboto', fontSize: 32, color: '#FFDE59', fontWeight: 'normal'}}>T R I H P</Text></View>
           {/* <Text style={styles.tagline}>Where safety meets convenience</Text> */}
           </View>
 

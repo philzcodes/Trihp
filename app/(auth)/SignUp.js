@@ -214,7 +214,7 @@ const Register = () => {
       setLoading(false);
       
       if (response.success) {
-        Alert.alert('Success', response.message || 'Registration successful! Please check your email for verification.');
+        //Alert.alert('Success', response.message || 'Registration successful! Please check your email for verification.');
         // Navigate to OTP verification screen with email
         router.push({
           pathname: '/(auth)/OTP',
