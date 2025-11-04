@@ -141,10 +141,11 @@ const styles = StyleSheet.create({
     borderRadius: 0.5,
   },
   subTitle: {
-    ...Fonts.Regular,
-    fontSize: 22,
+    fontFamily: 'Roboto',
+    fontSize: 32,
     textAlign: 'center',
     lineHeight: 30,
+    color: Colors.whiteColor,
   },
   tagline: {
     ...Fonts.Regular,

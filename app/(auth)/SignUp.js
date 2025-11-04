@@ -249,6 +249,32 @@ const Register = () => {
         errorMessage = formatErrorMessage(error);
       }
       
+      // Check if user already exists but hasn't verified OTP
+      const errorMessageLower = errorMessage.toLowerCase();
+      const isUserAlreadyExists = errorMessageLower.includes('user already exists') ||
+                                  errorMessageLower.includes('already registered') ||
+                                  errorMessageLower.includes('account not verified') ||
+                                  errorMessageLower.includes('email is not verified') ||
+                                  errorMessageLower.includes('email not verified') ||
+                                  errorMessageLower.includes('not verified');
+      
+      // Also check error response data for status codes that might indicate unverified user
+      const statusCode = error?.response?.status;
+      const isUnverifiedUser = statusCode === 409 || statusCode === 400; // 409 Conflict, 400 Bad Request
+      
+      if (isUserAlreadyExists || (isUnverifiedUser && errorMessageLower.includes('already'))) {
+        // User already registered but not verified - redirect to OTP page
+        router.push({
+          pathname: '/(auth)/OTP',
+          params: { 
+            email: email.trim(),
+            userType: 'RIDER',
+            fromRegistration: true
+          }
+        });
+        return; // Don't show error alert
+      }
+      
       Alert.alert('Registration Error', errorMessage);
     }
   };
