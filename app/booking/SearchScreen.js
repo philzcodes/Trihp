@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -22,7 +21,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getCurrentToken } from '../../api/client';
 import rideRequestAPI from '../../api/rideRequestAPI';
-import { MapComponent } from '../../components';
+import { AlertModal, MapComponent } from '../../components';
 import TriphButton from '../../components/TriphButton';
 import { haversineDistance } from '../../helper/distancesCalculate';
 import Loader from '../../helper/Loader';
@@ -51,6 +50,32 @@ const SearchScreen = ({ route }) => {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isReturningFromRide, setIsReturningFromRide] = useState(false);
   const [isCreatingRide, setIsCreatingRide] = useState(false);
+  
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
 
   // Zustand stores
   const { createRideRequest, setCurrentRide } = useBookingStore();
@@ -301,12 +326,12 @@ const SearchScreen = ({ route }) => {
 
     // Validate inputs
     if (!originLocation || !destinationLocation) {
-      Alert.alert('Missing Information', 'Please select both pickup and destination locations');
+      showAlert('error', 'Missing Information', 'Please select both pickup and destination locations');
       return;
     }
 
     if (!originCoordinates || !destinationCoordinates) {
-      Alert.alert('Location Error', 'Please wait for location coordinates to be loaded');
+      showAlert('error', 'Location Error', 'Please wait for location coordinates to be loaded');
       return;
     }
 
@@ -344,7 +369,7 @@ const SearchScreen = ({ route }) => {
       // Validate distance calculation
       if (isNaN(distance) || distance <= 0) {
         console.error('Invalid distance calculation:', distance);
-        Alert.alert('Error', 'Unable to calculate distance. Please try selecting different locations.');
+        showAlert('error', 'Error', 'Unable to calculate distance. Please try selecting different locations.');
         setLoading(false);
         return;
       }
@@ -476,34 +501,13 @@ const SearchScreen = ({ route }) => {
       
       // Check if it's an authentication error
       if (error?.statusCode === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('Invalid or Expired Token')) {
-        Alert.alert(
-          'Authentication Required', 
-          'Your session has expired. Please log in again to create a ride request.',
-          [
-            { text: 'OK', onPress: () => {
-              // Navigate to login screen or clear user data
-              console.log('User needs to re-authenticate');
-            }}
-          ]
-        );
+        showAlert('error', 'Authentication Required', 'Your session has expired. Please log in again to create a ride request.');
       } else if (error?.message?.includes('Ride request API is not available')) {
-        Alert.alert(
-          'Service Error', 
-          'The ride request service is temporarily unavailable. Please try again later.',
-          [{ text: 'OK' }]
-        );
+        showAlert('error', 'Service Error', 'The ride request service is temporarily unavailable. Please try again later.');
       } else if (error?.message?.includes('no response ID received')) {
-        Alert.alert(
-          'Request Failed', 
-          'Failed to create ride request. Please check your connection and try again.',
-          [{ text: 'OK' }]
-        );
+        showAlert('error', 'Request Failed', 'Failed to create ride request. Please check your connection and try again.');
       } else {
-        Alert.alert(
-          'Error', 
-          'Failed to create ride request. Please try again.',
-          [{ text: 'OK' }]
-        );
+        showAlert('error', 'Error', 'Failed to create ride request. Please try again.');
       }
     } finally {
       setLoading(false);

@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +10,7 @@ import {
   View
 } from 'react-native';
 import { authAPI } from '../../api/services';
+import { AlertModal } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
 const INITIAL_TIMER = 900; // 15 minutes in seconds
@@ -53,7 +53,34 @@ const OTP = () => {
   const params = useLocalSearchParams();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const inputRefs = useRef([]);
+  
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
   
   // Get email and userType from route params
   const email = params.email || '';
@@ -95,12 +122,12 @@ const OTP = () => {
     const otpString = otp.join('');
     
     if (otpString.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit code.');
+      showAlert('error', 'Error', 'Please enter the complete 6-digit code.');
       return;
     }
 
     if (!email) {
-      Alert.alert('Error', 'Email not found. Please try again.');
+      showAlert('error', 'Error', 'Email not found. Please try again.');
       return;
     }
 
@@ -133,30 +160,35 @@ const OTP = () => {
       setLoading(false);
       
       if (response.success) {
-        Alert.alert('Success', response.message || 'Email verified successfully!');
+        showAlert('success', 'Success', response.message || 'Email verified successfully!');
         
-        if (fromRegistration) {
-          // Navigate to login screen after successful registration
-          router.replace('/(auth)/Login');
-        } else {
-          // Navigate to main app
-          router.replace('/');
-        }
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          hideAlert();
+          if (fromRegistration) {
+            // Navigate to login screen after successful registration
+            router.replace('/(auth)/Login');
+          } else {
+            // Navigate to main app
+            router.replace('/');
+          }
+        }, 1500);
       } else {
-        Alert.alert('Error', response.message || 'Invalid or expired code. Please try again.');
+        showAlert('error', 'Error', response.message || 'Invalid or expired code. Please try again.');
       }
       
     } catch (error) {
       setLoading(false);
       console.error('OTP verification error:', error);
       
+      let errorMessage = 'Invalid or expired code. Please try again.';
       if (error.message) {
-        Alert.alert('Error', error.message);
+        errorMessage = error.message;
       } else if (error.error) {
-        Alert.alert('Error', error.error);
-      } else {
-        Alert.alert('Error', 'Invalid or expired code. Please try again.');
+        errorMessage = error.error;
       }
+      
+      showAlert('error', 'Error', errorMessage);
     }
   };
 
@@ -167,22 +199,84 @@ const OTP = () => {
       const timeString = minutes > 0 
         ? `${minutes} minute${minutes > 1 ? 's' : ''} ${seconds} second${seconds !== 1 ? 's' : ''}`
         : `${seconds} second${seconds !== 1 ? 's' : ''}`;
-      Alert.alert('Wait', `You can resend the code in ${timeString}.`);
+      showAlert('error', 'Wait', `You can resend the code in ${timeString}.`);
       return;
     }
 
     if (!email) {
-      Alert.alert('Error', 'Email not found. Please try registering again.');
+      showAlert('error', 'Error', 'Email not found. Please try registering again.');
       return;
     }
 
     try {
-      // For now, we'll simulate resending OTP
-      // In a real implementation, you might have a resend OTP endpoint
-      Alert.alert('Code Sent', `A new code has been sent to ${email}`);
-      resetTimer(); // Start the timer again
+      setResending(true);
+      
+      // Determine which API to call based on the flow
+      let response;
+      if (fromForgotPassword) {
+        // For forgot password flow, use forgotPassword endpoint to resend OTP
+        response = await authAPI.forgotPassword({
+          email: email.trim(),
+          userType: userType
+        });
+      } else {
+        // For registration flow, use resendOtp endpoint
+        response = await authAPI.resendOtp({
+          email: email.trim(),
+          userType: userType
+        });
+      }
+
+      setResending(false);
+
+      if (response.success) {
+        showAlert('success', 'Success', response.message || `A new code has been sent to ${maskEmail(email)}`);
+        resetTimer(); // Start the timer again
+        // Clear the OTP inputs
+        setOtp(['', '', '', '', '', '']);
+        // Focus on the first input
+        inputRefs.current[0]?.focus();
+      } else {
+        showAlert('error', 'Error', response.message || 'Failed to resend code. Please try again.');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to resend code. Please try again.');
+      setResending(false);
+      console.error('Resend OTP error:', error);
+      
+      // Handle specific error cases
+      let errorMessage = 'Failed to resend code. Please try again.';
+      
+      if (error?.response?.data) {
+        const errorData = error.response.data;
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      // Check if the resend-otp endpoint doesn't exist, fallback to forgotPassword for forgot password flow
+      if ((error?.response?.status === 404 || errorMessage.toLowerCase().includes('not found')) && fromForgotPassword) {
+        try {
+          // Fallback: Try using the forgotPassword endpoint again
+          const fallbackResponse = await authAPI.forgotPassword({
+            email: email.trim(),
+            userType: userType
+          });
+          
+          if (fallbackResponse.success) {
+            showAlert('success', 'Success', fallbackResponse.message || `A new code has been sent to ${maskEmail(email)}`);
+            resetTimer();
+            setOtp(['', '', '', '', '', '']);
+            inputRefs.current[0]?.focus();
+            return;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback resend error:', fallbackError);
+        }
+      }
+
+      showAlert('error', 'Error', errorMessage);
     }
   };
 
@@ -268,18 +362,31 @@ const OTP = () => {
         <TouchableOpacity 
           style={styles.resendLinkContainer} 
           onPress={resendOtp}
-          disabled={timerActive} // Disable resend when timer is running
-          activeOpacity={timerActive ? 1 : 0.7}
+          disabled={timerActive || resending} // Disable resend when timer is running or resending
+          activeOpacity={(timerActive || resending) ? 1 : 0.7}
         >
-          <Text style={[
-            styles.resendLinkText, 
-            { color: timerActive ? Colors.grey14 : Colors.whiteColor }
-          ]}>
-            Click here to Resend Code
-          </Text>
+          {resending ? (
+            <ActivityIndicator size="small" color={Colors.yellow || '#FFD700'} />
+          ) : (
+            <Text style={[
+              styles.resendLinkText, 
+              { color: timerActive ? Colors.grey14 : Colors.whiteColor }
+            ]}>
+              Click here to Resend Code
+            </Text>
+          )}
         </TouchableOpacity>
 
       </View>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={hideAlert}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+      />
     </View>
   );
 };

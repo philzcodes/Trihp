@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constant from '../../api/constants';
 import { authAPI } from '../../api/services';
-import { TriphButton } from '../../components';
+import { AlertModal, TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
 const ResetPassword = () => {
@@ -22,6 +22,32 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
 
   const isValidPassword = (password) => {
     return Constant.passwordValidation.test(password);
@@ -41,25 +67,26 @@ const ResetPassword = () => {
 
   const handleResetPassword = async () => {
     if (!newPassword) {
-      Alert.alert('Error', 'Please enter a new password');
+      showAlert('error', 'Error', 'Please enter a new password');
       return;
     }
 
     if (!confirmPassword) {
-      Alert.alert('Error', 'Please confirm your new password');
+      showAlert('error', 'Error', 'Please confirm your new password');
       return;
     }
 
     if (!isValidPassword(newPassword)) {
-      Alert.alert(
-        'Error', 
+      showAlert(
+        'error', 
+        'Error',
         'Password must be 8-16 characters long and contain at least one special character (!@#$%^&*)'
       );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('error', 'Error', 'Passwords do not match');
       return;
     }
 
@@ -80,31 +107,29 @@ const ResetPassword = () => {
       setLoading(false);
       
       if (response.success) {
-        Alert.alert(
-          'Success',
-          response.message || 'Password has been reset successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/(auth)/Login'),
-            },
-          ]
-        );
+        showAlert('success', 'Success', response.message || 'Password has been reset successfully!');
+        
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          hideAlert();
+          router.replace('/(auth)/Login');
+        }, 1500);
       } else {
-        Alert.alert('Error', response.message || 'Failed to reset password. Please try again.');
+        showAlert('error', 'Error', response.message || 'Failed to reset password. Please try again.');
       }
       
     } catch (error) {
       setLoading(false);
       console.error('Reset password error:', error);
       
+      let errorMessage = 'Failed to reset password. Please try again.';
       if (error.message) {
-        Alert.alert('Error', error.message);
+        errorMessage = error.message;
       } else if (error.error) {
-        Alert.alert('Error', error.error);
-      } else {
-        Alert.alert('Error', 'Failed to reset password. Please try again.');
+        errorMessage = error.error;
       }
+      
+      showAlert('error', 'Error', errorMessage);
     }
   };
 
@@ -246,6 +271,15 @@ const ResetPassword = () => {
             extraTextStyle={styles.submitButtonText}
           />
         </ScrollView>
+
+        {/* Alert Modal */}
+        <AlertModal
+          visible={alertModal.visible}
+          onClose={hideAlert}
+          type={alertModal.type}
+          title={alertModal.title}
+          message={alertModal.message}
+        />
       </View>
     </SafeAreaView>
   );

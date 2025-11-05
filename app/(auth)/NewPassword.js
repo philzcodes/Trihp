@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView, // Good for input-heavy screens
     Platform // Used with KeyboardAvoidingView
     ,
@@ -14,19 +13,8 @@ import {
     View
 } from 'react-native';
 
-// --- Dummy Constants for Standalone Code (Replace with your actual imports) ---
-const Colors = {
-  blackColor: '#000000',
-  whiteColor: '#FFFFFF',
-  yellow: '#FFC700', // Primary button color from the image
-  grey10: '#333333', // Darker grey for borders/input backgrounds
-  grey14: '#999999', // Subtitle text color
-};
-const Fonts = {
-  TextBold: { fontFamily: 'System' /* Replace with actual Bold font */, fontWeight: '700' },
-  Regular: { fontFamily: 'System' /* Replace with actual Regular font */, fontWeight: '400' },
-};
-// --- End Dummy Constants ---
+import { AlertModal } from '../../components';
+import { Colors, Fonts } from '../../constants';
 
 const NewPassword = () => {
   const router = useRouter();
@@ -35,20 +23,46 @@ const NewPassword = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showVerifyPassword, setShowVerifyPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
 
   const handleSubmit = async () => {
     if (!newPassword || !verifyPassword) {
-      Alert.alert('Error', 'Please enter and verify your new password.');
+      showAlert('error', 'Error', 'Please enter and verify your new password.');
       return;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long.');
+      showAlert('error', 'Error', 'Password must be at least 8 characters long.');
       return;
     }
 
     if (newPassword !== verifyPassword) {
-      Alert.alert('Error', 'New password and verification password do not match.');
+      showAlert('error', 'Error', 'New password and verification password do not match.');
       return;
     }
 
@@ -58,12 +72,15 @@ const NewPassword = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       setLoading(false);
       
-      Alert.alert('Success', 'Your password has been updated successfully!');
-      // Navigate to a success screen or home/login
-      // router.replace('/login'); 
+      showAlert('success', 'Success', 'Your password has been updated successfully!');
+      // Navigate to a success screen or home/login after delay
+      setTimeout(() => {
+        hideAlert();
+        // router.replace('/login'); 
+      }, 1500);
     } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to update password. Please try again.');
+      showAlert('error', 'Error', 'Failed to update password. Please try again.');
     }
   };
 
@@ -150,6 +167,15 @@ const NewPassword = () => {
         </TouchableOpacity>
 
       </View>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={hideAlert}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+      />
     </KeyboardAvoidingView>
   );
 };

@@ -76,6 +76,26 @@ export const authAPI = {
     }
   },
 
+  // Resend OTP
+  resendOtp: async (emailData) => {
+    try {
+      // Convert object to URL-encoded string for form-encoded requests
+      const formData = new URLSearchParams();
+      formData.append('email', emailData.email);
+      formData.append('userType', emailData.userType);
+
+      const response = await api.post(Constant.resendOtp, formData.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Resend OTP API error:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Forgot password
   forgotPassword: async (emailData) => {
     try {

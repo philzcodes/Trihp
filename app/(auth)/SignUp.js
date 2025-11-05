@@ -1,12 +1,12 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import Constant from '../../api/constants';
 import { authAPI } from '../../api/services';
-import { BackButton, TriphButton } from '../../components';
+import { AlertModal, BackButton, TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 
 // Country data - Comprehensive list of all countries
@@ -258,6 +258,32 @@ const Register = () => {
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
   const [webViewLoading, setWebViewLoading] = useState(true);
   
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
+  
   // Validation errors state
   const [errors, setErrors] = useState({
     phoneNumber: '',
@@ -281,7 +307,7 @@ const Register = () => {
   const onSubmit = async () => {
     // Validate all fields
     if (!validateAllFields()) {
-      Alert.alert('Error', 'Please fix the validation errors before continuing');
+      showAlert('error', 'Error', 'Please fix the validation errors before continuing');
       return;
     }
 
@@ -311,7 +337,6 @@ const Register = () => {
       setLoading(false);
       
       if (response.success) {
-        //Alert.alert('Success', response.message || 'Registration successful! Please check your email for verification.');
         // Navigate to OTP verification screen with email
         router.push({
           pathname: '/(auth)/OTP',
@@ -324,7 +349,7 @@ const Register = () => {
       } else {
         // Handle error response from API
         const errorMessage = formatErrorMessage(response.message || 'Registration failed. Please try again.');
-        Alert.alert('Error', errorMessage);
+        showAlert('error', 'Error', errorMessage);
       }
       
     } catch (error) {
@@ -372,7 +397,7 @@ const Register = () => {
         return; // Don't show error alert
       }
       
-      Alert.alert('Registration Error', errorMessage);
+      showAlert('error', 'Registration Error', errorMessage);
     }
   };
 
@@ -651,29 +676,32 @@ const Register = () => {
 
         {/* Password Input */}
         <View style={styles.inputWrapper}>
-          <TextInput
-            value={password}
-            onChangeText={handlePasswordChange}
-            onBlur={() => handleBlur('password')}
-            placeholder="Password"
-            placeholderTextColor={Colors.grey8 || '#666'}
-            style={[
-              styles.input,
-              errors.password && styles.inputError
-            ]}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-          />
-          <Pressable 
-            style={styles.eyeIcon}
-            onPress={() => setShowPassword(!showPassword)}
-          >
-            <Ionicons 
-              name={showPassword ? "eye-outline" : "eye-off-outline"} 
-              size={22} 
-              color={Colors.whiteColor} 
+          <View style={styles.passwordInputContainer}>
+            <TextInput
+              value={password}
+              onChangeText={handlePasswordChange}
+              onBlur={() => handleBlur('password')}
+              placeholder="Password"
+              placeholderTextColor={Colors.grey8 || '#666'}
+              style={[
+                styles.input,
+                styles.passwordInput,
+                errors.password && styles.inputError
+              ]}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
             />
-          </Pressable>
+            <Pressable 
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                size={22} 
+                color={Colors.whiteColor} 
+              />
+            </Pressable>
+          </View>
           
           {/* Password Requirements List */}
           {password && (
@@ -739,29 +767,32 @@ const Register = () => {
 
         {/* Confirm Password Input */}
         <View style={styles.inputWrapper}>
-          <TextInput
-            value={confirmPassword}
-            onChangeText={handleConfirmPasswordChange}
-            onBlur={() => handleBlur('confirmPassword')}
-            placeholder="Confirm Password"
-            placeholderTextColor={Colors.grey8 || '#666'}
-            style={[
-              styles.input,
-              errors.confirmPassword && styles.inputError
-            ]}
-            secureTextEntry={!showConfirmPassword}
-            autoCapitalize="none"
-          />
-          <Pressable 
-            style={styles.eyeIcon}
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            <Ionicons 
-              name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
-              size={22} 
-              color={Colors.grey8 || '#999'} 
+          <View style={styles.passwordInputContainer}>
+            <TextInput
+              value={confirmPassword}
+              onChangeText={handleConfirmPasswordChange}
+              onBlur={() => handleBlur('confirmPassword')}
+              placeholder="Confirm Password"
+              placeholderTextColor={Colors.grey8 || '#666'}
+              style={[
+                styles.input,
+                styles.passwordInput,
+                errors.confirmPassword && styles.inputError
+              ]}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
             />
-          </Pressable>
+            <Pressable 
+              style={styles.eyeIcon}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons 
+                name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
+                size={22} 
+                color={Colors.whiteColor} 
+              />
+            </Pressable>
+          </View>
           {errors.confirmPassword ? (
             <Text style={styles.errorText}>{errors.confirmPassword}</Text>
           ) : null}
@@ -975,6 +1006,15 @@ const Register = () => {
           />
         </SafeAreaView>
       </Modal>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={hideAlert}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+      />
     </SafeAreaView>
   );
 };
@@ -1010,6 +1050,12 @@ const styles = StyleSheet.create({
   inputWrapper: {
     marginBottom: 15,
     position: 'relative',
+  },
+  passwordInputContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 50, // Add padding to make room for eye icon
   },
   phoneInputContainer: {
     flexDirection: 'row',
@@ -1090,11 +1136,12 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: 20,
-    top: 0,
-    bottom: 0,
+    top: (55 - 22) / 2, // Center vertically: (input height - icon size) / 2 = (55 - 22) / 2 = 16.5
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 5,
+    zIndex: 1,
   },
   genderContainer: {
     flexDirection: 'row',

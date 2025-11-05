@@ -2,10 +2,10 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authAPI } from '../../api/services';
-import { TriphButton } from '../../components';
+import { AlertModal, TriphButton } from '../../components';
 import { Colors, Fonts } from '../../constants';
 import useUserStore from '../../store/userStore';
 
@@ -223,23 +223,49 @@ const LoginWithPhone = () => {
   });
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
+  
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
+  
+  const showAlert = (type, title, message) => {
+    setAlertModal({
+      visible: true,
+      type,
+      title,
+      message,
+    });
+  };
+  
+  const hideAlert = () => {
+    setAlertModal({
+      visible: false,
+      type: 'error',
+      title: '',
+      message: '',
+    });
+  };
 
   const onLogin = async () => {
     try {
       console.log('Validating input...');
       
       if (!phoneNumber) {
-        Alert.alert('Error', 'Please enter your phone number');
+        showAlert('error', 'Error', 'Please enter your phone number');
         return;
       }
 
       if (phoneNumber.length < 9) {
-        Alert.alert('Error', 'Please enter a valid phone number');
+        showAlert('error', 'Error', 'Please enter a valid phone number');
         return;
       }
       
       if (!password) {
-        Alert.alert('Error', 'Please enter your password');
+        showAlert('error', 'Error', 'Please enter your password');
         return;
       }
 
@@ -296,23 +322,29 @@ const LoginWithPhone = () => {
           }
         }
         
-       // Alert.alert('Success', response.message || 'Login successful! Welcome back!');
-        router.replace('/(tabs)/Dashboard');
+        showAlert('success', 'Success', response.message || 'Login successful! Welcome back!');
+        
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          hideAlert();
+          router.replace('/(tabs)/Dashboard');
+        }, 1500);
       } else {
-        Alert.alert('Error', response.message || 'Login failed. Please check your credentials.');
+        showAlert('error', 'Error', response.message || 'Login failed. Please check your credentials.');
       }
       
     } catch (error) {
       setLoading(false);
       console.error('Login error:', error);
       
+      let errorMessage = 'Login failed. Please try again.';
       if (error.message) {
-        Alert.alert('Error', error.message);
+        errorMessage = error.message;
       } else if (error.error) {
-        Alert.alert('Error', error.error);
-      } else {
-        Alert.alert('Error', 'Login failed. Please try again.');
+        errorMessage = error.error;
       }
+      
+      showAlert('error', 'Error', errorMessage);
     }
   };
 
@@ -503,6 +535,15 @@ const LoginWithPhone = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Alert Modal */}
+        <AlertModal
+          visible={alertModal.visible}
+          onClose={hideAlert}
+          type={alertModal.type}
+          title={alertModal.title}
+          message={alertModal.message}
+        />
       </View>
     </SafeAreaView>
   );

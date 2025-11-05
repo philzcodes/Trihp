@@ -13,6 +13,7 @@ const Constant = {
   login: 'auth/login',
   logout: 'auth/logout',
   verifyEmail: 'auth/verify-email',
+  resendOtp: 'auth/resend-otp',
   forgotPassword: 'auth/password/forgot',
   resetPassword: 'auth/password/reset',
   changePassword: 'auth/password/change',
