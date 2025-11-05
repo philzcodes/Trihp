@@ -464,6 +464,7 @@ const SearchScreen = ({ route }) => {
           estimatedDistance: distance.toString(),
           estimatedDuration: estimatedDuration.toString(),
           totalFare: Math.round(totalFare).toString(),
+          selectedVehicleType: selectedVehicleType || rideData?.vehicleType || 'CAR', // Pass selected vehicle type from Services page
         }
       });
 

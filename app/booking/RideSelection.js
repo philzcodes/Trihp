@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -105,6 +106,97 @@ const RideSelection = () => {
 
   // Combine all vehicles for searching
   const allVehicles = [...vehicles, ...moreVehicles];
+
+  // State for ordered vehicles (will be reordered based on selection)
+  const [orderedVehicles, setOrderedVehicles] = useState(vehicles);
+  const [orderedMoreVehicles, setOrderedMoreVehicles] = useState(moreVehicles);
+  
+  // Ref to track the last vehicle type we reordered for to prevent infinite loops
+  const lastReorderedVehicleTypeRef = useRef(null);
+
+  // Helper function to reorder vehicles array - move selected vehicle to first position
+  const reorderVehicles = useCallback((vehicleTypeToPrioritize) => {
+    // Prevent reordering if we've already done it for this vehicle type
+    if (lastReorderedVehicleTypeRef.current === vehicleTypeToPrioritize) {
+      return;
+    }
+    
+    if (!vehicleTypeToPrioritize) {
+      if (lastReorderedVehicleTypeRef.current !== null) {
+        lastReorderedVehicleTypeRef.current = null;
+        setOrderedVehicles(vehicles);
+        setOrderedMoreVehicles(moreVehicles);
+      }
+      return;
+    }
+
+    // Find the vehicle in either array
+    const allVehiclesList = [...vehicles, ...moreVehicles];
+    const selectedVehicle = allVehiclesList.find(v => v.type === vehicleTypeToPrioritize);
+    
+    if (!selectedVehicle) {
+      if (lastReorderedVehicleTypeRef.current !== null) {
+        lastReorderedVehicleTypeRef.current = null;
+        setOrderedVehicles(vehicles);
+        setOrderedMoreVehicles(moreVehicles);
+      }
+      return;
+    }
+
+    // Mark that we've reordered for this vehicle type
+    lastReorderedVehicleTypeRef.current = vehicleTypeToPrioritize;
+
+    // Check if it's in the main vehicles array
+    const isInMainVehicles = vehicles.some(v => v.type === vehicleTypeToPrioritize);
+    
+    if (isInMainVehicles) {
+      // Reorder main vehicles - move selected to first
+      const reorderedMain = vehicles.filter(v => v.type !== vehicleTypeToPrioritize);
+      setOrderedVehicles([selectedVehicle, ...reorderedMain]);
+      setOrderedMoreVehicles(moreVehicles);
+    } else {
+      // Move from moreVehicles to first position in main vehicles
+      const reorderedMore = moreVehicles.filter(v => v.type !== vehicleTypeToPrioritize);
+      setOrderedVehicles([selectedVehicle, ...vehicles]);
+      setOrderedMoreVehicles(reorderedMore);
+    }
+  }, [vehicles, moreVehicles]);
+
+  // Load last selected vehicle type from AsyncStorage and reorder vehicles
+  useEffect(() => {
+    const loadLastSelectedVehicle = async () => {
+      try {
+        // Priority 1: Check route params first (from Services page) - this takes highest priority
+        const routeVehicleType = params?.selectedVehicleType || rideData?.vehicleType;
+        
+        if (routeVehicleType) {
+          // Only reorder if we haven't already done it for this vehicle type
+          if (lastReorderedVehicleTypeRef.current !== routeVehicleType) {
+            console.log('Using vehicle type from route params (Services):', routeVehicleType);
+            reorderVehicles(routeVehicleType);
+          }
+          return; // Exit early if route params have vehicle type
+        }
+        
+        // Priority 2: Check stored preference (only if no route params)
+        const storedData = await AsyncStorage.getItem('selectedRideType');
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          const lastVehicleType = parsedData?.type || parsedData?.vehicleType;
+          
+          if (lastVehicleType && lastReorderedVehicleTypeRef.current !== lastVehicleType) {
+            console.log('Using stored vehicle type:', lastVehicleType);
+            reorderVehicles(lastVehicleType);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading last selected vehicle:', error);
+      }
+    };
+
+    loadLastSelectedVehicle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.selectedVehicleType, rideData?.vehicleType]); // Removed reorderVehicles to prevent infinite loops
 
   // Dummy driver markers for the map
   const dummyDrivers = [
@@ -373,14 +465,14 @@ const RideSelection = () => {
     if (coordinatesReady && parsedCoordinates.origin && parsedCoordinates.destination && !pricingCalculated) {
       // Delay initial pricing calculation and only calculate for main vehicles
       const timer = setTimeout(() => {
-        const mainVehicleTypes = vehicles.map(v => v.type); // Only first 3 vehicles
+        const mainVehicleTypes = orderedVehicles.map(v => v.type); // Use ordered vehicles
         calculateVehiclePricing(mainVehicleTypes);
         setPricingCalculated(true);
       }, 800); // Slightly longer delay to reduce initial burst
       
       return () => clearTimeout(timer);
     }
-  }, [coordinatesReady, parsedCoordinates.origin, parsedCoordinates.destination, pricingCalculated]);
+  }, [coordinatesReady, parsedCoordinates.origin, parsedCoordinates.destination, pricingCalculated, orderedVehicles, calculateVehiclePricing]);
 
   // Retry pricing calculation
   const retryPricingCalculation = useCallback(async () => {
@@ -498,6 +590,21 @@ const RideSelection = () => {
       
       setSelectedVehicle(vehicle);
       
+      // Save selected vehicle type to AsyncStorage for future use
+      try {
+        await AsyncStorage.setItem('selectedRideType', JSON.stringify({
+          type: vehicle.type,
+          name: vehicle.name,
+          vehicleType: vehicle.type
+        }));
+        console.log('Saved selected vehicle type to storage:', vehicle.type);
+      } catch (storageError) {
+        console.error('Error saving vehicle selection to storage:', storageError);
+      }
+      
+      // Reorder vehicles to put selected one first
+      reorderVehicles(vehicle.type);
+      
       // Check if pricing exists for this vehicle, if not calculate it on-demand
       if (!vehiclePricing[vehicle.type] && !pricingLoading) {
         console.log(`Pricing not found for ${vehicle.type}, calculating on-demand...`);
@@ -516,7 +623,7 @@ const RideSelection = () => {
       console.error('Error handling vehicle selection:', error);
       // Don't show alert for selection - only for confirmation
     }
-  }, [vehiclePricing, pricingLoading, calculateVehiclePricing]);
+  }, [vehiclePricing, pricingLoading, calculateVehiclePricing, reorderVehicles]);
 
   // Handle confirm ride with auto-matching
   const handleConfirmRide = useCallback(async () => {
@@ -654,38 +761,89 @@ const RideSelection = () => {
     };
   }, []);
 
-  // Auto-select vehicle based on rideData.vehicleType (from Services page selection)
+  // Auto-select vehicle - prioritize route params, then stored preference, then rideData
   useEffect(() => {
-    if (rideData?.vehicleType && !selectedVehicle) {
-      const matchingVehicle = allVehicles.find(v => v.type === rideData.vehicleType);
-      if (matchingVehicle) {
-        console.log('Auto-selecting vehicle based on rideData:', matchingVehicle.type);
-        setSelectedVehicle(matchingVehicle);
+    const selectVehicle = async () => {
+      // Check if we already have the correct vehicle selected
+      const currentVehicleType = selectedVehicle?.type;
+      
+      let vehicleTypeToSelect = null;
+      
+      // Priority 1: Route params (from Services page) - highest priority
+      if (params?.selectedVehicleType) {
+        vehicleTypeToSelect = params.selectedVehicleType;
+        // If already selected, still check if it matches
+        if (currentVehicleType === vehicleTypeToSelect) {
+          console.log('Vehicle already selected from route params:', vehicleTypeToSelect);
+          return; // Already have the correct vehicle selected
+        }
+        console.log('Auto-selecting vehicle from route params (Services):', vehicleTypeToSelect);
       }
-    }
-  }, [rideData?.vehicleType]);
+      // Priority 2: Stored preference from AsyncStorage (only if no route params)
+      else if (!params?.selectedVehicleType) {
+        try {
+          const storedData = await AsyncStorage.getItem('selectedRideType');
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            vehicleTypeToSelect = parsedData?.type || parsedData?.vehicleType;
+            if (vehicleTypeToSelect) {
+              // If already selected, check if it matches
+              if (currentVehicleType === vehicleTypeToSelect) {
+                console.log('Vehicle already selected from stored preference:', vehicleTypeToSelect);
+                return; // Already have the correct vehicle selected
+              }
+              console.log('Auto-selecting vehicle from stored preference:', vehicleTypeToSelect);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading stored vehicle preference:', error);
+        }
+      }
+      
+      // Priority 3: rideData.vehicleType (fallback)
+      if (!vehicleTypeToSelect && rideData?.vehicleType) {
+        vehicleTypeToSelect = rideData.vehicleType;
+        // If already selected, check if it matches
+        if (currentVehicleType === vehicleTypeToSelect) {
+          console.log('Vehicle already selected from rideData:', vehicleTypeToSelect);
+          return; // Already have the correct vehicle selected
+        }
+        console.log('Auto-selecting vehicle from rideData:', vehicleTypeToSelect);
+      }
+
+      // Select the vehicle if we found one
+      if (vehicleTypeToSelect) {
+        const matchingVehicle = allVehicles.find(v => v.type === vehicleTypeToSelect);
+        if (matchingVehicle) {
+          console.log('Setting selected vehicle:', matchingVehicle.name, matchingVehicle.type);
+          setSelectedVehicle(matchingVehicle);
+        } else {
+          console.warn('No matching vehicle found for type:', vehicleTypeToSelect);
+        }
+      }
+    };
+
+    selectVehicle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.selectedVehicleType, rideData?.vehicleType]); // Removed selectedVehicle?.type to prevent loops - we check inside the function
 
   // Simulate loading
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isMountedRef.current) {
         setLoading(false);
-        // Only set default if no vehicle was selected from rideData
-        if (!selectedVehicle && rideData?.vehicleType) {
-          const matchingVehicle = allVehicles.find(v => v.type === rideData.vehicleType);
-          if (matchingVehicle) {
-            setSelectedVehicle(matchingVehicle);
-          } else {
-            setSelectedVehicle(vehicles[0]); // Fallback to first vehicle
-          }
-        } else if (!selectedVehicle) {
-          setSelectedVehicle(vehicles[0]); // Select first vehicle by default
+        // Only set default if no vehicle was selected
+        if (!selectedVehicle) {
+          // Use first vehicle from ordered list (which should be the prioritized one)
+          const defaultVehicle = orderedVehicles.length > 0 ? orderedVehicles[0] : vehicles[0];
+          setSelectedVehicle(defaultVehicle);
+          console.log('Setting default vehicle:', defaultVehicle?.name);
         }
       }
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [orderedVehicles, selectedVehicle]);
 
   // Generate random arrival time
   useEffect(() => {
@@ -831,14 +989,14 @@ const RideSelection = () => {
             <>
               {/* Main Vehicles */}
               <View style={styles.vehiclesSection}>
-                {vehicles.map((item) => renderVehicleItem(item, selectedVehicle?.id === item.id))}
+                {orderedVehicles.map((item) => renderVehicleItem(item, selectedVehicle?.id === item.id))}
       </View>
 
               {/* More Available Rides Section */}
               <View style={styles.moreRidesSection}>
                 <Text style={styles.moreRidesTitle}>More available rides</Text>
                 <View style={styles.moreRidesDivider} />
-                {moreVehicles.map((item) => renderVehicleItem(item, selectedVehicle?.id === item.id))}
+                {orderedMoreVehicles.map((item) => renderVehicleItem(item, selectedVehicle?.id === item.id))}
               </View>
             </>
           )}

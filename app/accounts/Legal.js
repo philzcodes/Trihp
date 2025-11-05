@@ -1,105 +1,195 @@
-import { Entypo } from '@expo/vector-icons';
+import { Entypo, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '../../constants'; // Assuming these are defined in your project
+import { WebView } from 'react-native-webview';
+import { Colors, Fonts } from '../../constants';
 
-// Mock Legal Content (Structured to match the image)
-const LEGAL_CONTENT = [
+// Legal documents list
+const LEGAL_DOCUMENTS = [
   {
-    title: 'Terms and Conditions',
-    body: `Trihp Wallet is a secure and convenient digital wallet designed to simplify your transactions on the Trihp platform. Whether you're riding, driving, or managing a fleet, the Trihp Wallet ensures you have complete control over your funds, all from the comfort of your app. 
-    Say goodbye to cash hassles or multiple payment platforms. With Trihp Wallet, everything you need is at your fingertips, making your experience smoother, faster, and safer.`,
-  },
-  {
+    id: 'privacy',
     title: 'Privacy Policy',
-    body: `Trihp Wallet is a secure and convenient digital wallet designed to simplify your transactions on the Trihp platform. Whether you're riding, driving, or managing a fleet, the Trihp Wallet ensures you have complete control over your funds, all from the comfort of your app. 
-    Say goodbye to cash hassles or multiple payment platforms. With Trihp Wallet, everything you need is at your fingertips, making your experience smoother, faster, and safer. complete control over your funds, all from the comfort of your app.
-    Say goodbye to cash hassles or multiple payment platforms. With`,
+    url: 'https://trihp.com/privacy-policy', // Update with actual URL if different
   },
-  // You would add more sections here like 'Cookie Policy', etc.
+  {
+    id: 'terms',
+    title: 'Terms and Conditions',
+    url: 'https://trihp.com/terms-and-condition',
+  },
 ];
 
 const LegalScreen = () => {
   const router = useRouter();
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [webViewLoading, setWebViewLoading] = useState(true);
+
+  const handleDocumentPress = (document) => {
+    setSelectedDocument(document);
+    setWebViewLoading(true);
+  };
+
+  const closeModal = () => {
+    setSelectedDocument(null);
+    setWebViewLoading(true);
+  };
 
   return (
-    // SafeAreaView ensures content is below the notch/status bar
     <SafeAreaView style={styles.container} edges={['top']}>
-      
-      {/* Custom Header matching the screenshot */}
+      {/* Custom Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
-          {/* Using Entypo for the chevron-left icon */}
           <Entypo name="chevron-left" size={26} color={Colors.whiteColor || '#FFFFFF'} />
         </Pressable>
         <Text style={styles.headerTitle}>Legal</Text>
       </View>
 
-      {/* Scrollable Content */}
+      {/* Legal Documents List */}
       <ScrollView style={styles.content}>
-        {LEGAL_CONTENT.map((section, index) => (
-          <View key={index} style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Text style={styles.sectionBody}>{section.body}</Text>
-          </View>
+        {LEGAL_DOCUMENTS.map((document) => (
+          <TouchableOpacity
+            key={document.id}
+            style={styles.documentItem}
+            onPress={() => handleDocumentPress(document)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.documentTitle}>{document.title}</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.grey8 || '#999'} />
+          </TouchableOpacity>
         ))}
-        {/* Added extra padding at the bottom for comfortable scrolling */}
         <View style={{ height: 50 }} />
       </ScrollView>
-      
+
+      {/* WebView Modal for selected document */}
+      {selectedDocument && (
+        <Modal
+          visible={!!selectedDocument}
+          animationType="slide"
+          transparent={false}
+          onRequestClose={closeModal}
+        >
+          <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedDocument.title}</Text>
+              <TouchableOpacity
+                onPress={closeModal}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={Colors.whiteColor} />
+              </TouchableOpacity>
+            </View>
+            
+            {webViewLoading && (
+              <View style={styles.webViewLoader}>
+                <ActivityIndicator size="large" color={Colors.yellow || '#FFD700'} />
+                <Text style={styles.loadingText}>Loading {selectedDocument.title}...</Text>
+              </View>
+            )}
+            
+            <WebView
+              source={{ uri: selectedDocument.url }}
+              style={styles.webView}
+              onLoadStart={() => setWebViewLoading(true)}
+              onLoadEnd={() => setWebViewLoading(false)}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('WebView error: ', nativeEvent);
+                setWebViewLoading(false);
+              }}
+            />
+          </SafeAreaView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  // --- Global Styles ---
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor || '#000000', // Deep black background
+    backgroundColor: Colors.blackColor || '#000000',
   },
-  
-  // --- Header Styles ---
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
     paddingVertical: 10,
-    // The image shows a clean header without a bottom border
   },
   backButton: {
     paddingRight: 10,
-    paddingVertical: 5, 
+    paddingVertical: 5,
   },
   headerTitle: {
-    // Looks slightly larger and bolder than the body text
     fontSize: 20,
     color: Colors.whiteColor || '#FFFFFF',
-    fontWeight: '600', // Semi-bold to match the image
+    fontWeight: '600',
     marginLeft: 10,
   },
-  
-  // --- Content Styles ---
   content: {
     flex: 1,
-    paddingHorizontal: 20, // Padding from the sides
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  sectionContainer: {
-    marginBottom: 30, // Space between legal sections
+  documentItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.grey11 || '#2A2A2A',
+    borderRadius: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    marginBottom: 15,
   },
-  sectionTitle: {
-    fontSize: 22,
+  documentTitle: {
+    ...Fonts.TextBold,
+    fontSize: 16,
     color: Colors.whiteColor || '#FFFFFF',
-    fontWeight: '700', // Bold for the section titles
-    marginBottom: 10, // Space below the title
+    flex: 1,
   },
-  sectionBody: {
-    fontSize: 15, // Slightly smaller than the title, common body text size
-    lineHeight: 24, // Increased line height for readability
-    color: Colors.whiteColor || '#FFFFFF',
-    opacity: 0.9, // Slight opacity reduction for body text
-    fontWeight: '400', // Regular weight for body text
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.blackColor || '#000',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.grey11 || '#2A2A2A',
+  },
+  modalTitle: {
+    ...Fonts.TextBold,
+    fontSize: 20,
+    color: Colors.whiteColor || '#FFF',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: Colors.blackColor || '#000',
+  },
+  webViewLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.blackColor || '#000',
+    zIndex: 1,
+  },
+  loadingText: {
+    ...Fonts.Regular,
+    color: Colors.whiteColor || '#FFF',
+    marginTop: 10,
+    fontSize: 14,
   },
 });
 

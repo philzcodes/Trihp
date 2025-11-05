@@ -65,11 +65,15 @@ const Services = () => {
   const handleSelectedRideType = async (rideType) => {
     if (rideType) {
       try {
-        // Save the selected ride type to AsyncStorage
-        await AsyncStorage.setItem('selectedRideType', JSON.stringify(rideType));
-        
         // Map service to vehicle type
         const vehicleType = getVehicleType(rideType.value);
+        
+        // Save the selected ride type to AsyncStorage with vehicleType included
+        await AsyncStorage.setItem('selectedRideType', JSON.stringify({
+          ...rideType,
+          type: vehicleType, // Add vehicleType for easy lookup
+          vehicleType: vehicleType // Also include as vehicleType for compatibility
+        }));
         
         // Navigate to SearchScreen with the selected vehicle type
         router.push({

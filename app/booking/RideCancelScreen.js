@@ -17,8 +17,10 @@ const RideCancelScreen = () => {
   // Get store functions
   const setRideRequestId = useBookingStore(state => state.setRideRequestId);
   const setCurrentRide = useBookingStore(state => state.setCurrentRide);
-  const storeRideId = useBookingStore(state => state.rideRequestId || state.currentRide?.id);
   const getRideIdFn = useBookingStore(state => state.getRideId);
+  
+  // Use ref to track if we've already set the rideId to prevent infinite loops
+  const hasSetRideIdRef = React.useRef(false);
   
   // Get rideId from multiple sources: params, store, or parsed data
   let rideIdFromParams = params?.rideId || params?.id;
@@ -37,25 +39,30 @@ const RideCancelScreen = () => {
     rideIdFromParams = parsedData?.id || parsedData?.rideId || parsedData?.ride?.id || rideIdFromParams;
   }
   
-  // Final rideId from all sources
-  const rideId = rideIdFromParams || storeRideId || (getRideIdFn ? getRideIdFn() : null);
+  // Get current store rideId (only read once, not as a dependency)
+  const currentStoreRideId = useBookingStore.getState().rideRequestId || useBookingStore.getState().currentRide?.id;
   
-  // Set ride ID in store when available
+  // Final rideId from all sources
+  const rideId = rideIdFromParams || currentStoreRideId || (getRideIdFn ? getRideIdFn() : null);
+  
+  // Set ride ID in store when available - only once to prevent infinite loops
   useEffect(() => {
-    if (rideId && rideId !== storeRideId) {
+    // Only set if we have a rideId, haven't set it before, and it's different from store
+    if (rideId && !hasSetRideIdRef.current && rideId !== currentStoreRideId) {
+      hasSetRideIdRef.current = true;
       setRideRequestId(rideId);
       if (parsedData) {
         setCurrentRide(parsedData);
       }
     }
-  }, [rideId, storeRideId, parsedData, setRideRequestId, setCurrentRide]);
+  }, [rideId, setRideRequestId, setCurrentRide]); // Removed storeRideId and parsedData from dependencies
   
   // Debug logging (only in dev)
   if (__DEV__) {
     console.log('RideCancelScreen - Received params:', params);
     console.log('RideCancelScreen - Parsed data:', parsedData);
     console.log('RideCancelScreen - Extracted rideId from params:', rideIdFromParams);
-    console.log('RideCancelScreen - Store rideId:', storeRideId);
+    console.log('RideCancelScreen - Store rideId:', currentStoreRideId);
     console.log('RideCancelScreen - Final rideId:', rideId);
   }
   
@@ -85,13 +92,12 @@ const RideCancelScreen = () => {
 
       // Final attempt to get rideId - check all sources (re-check store in case it was updated)
       const currentStoreRideId = useBookingStore.getState().rideRequestId || useBookingStore.getState().currentRide?.id;
-      const finalRideId = rideId || rideIdFromParams || storeRideId || currentStoreRideId || (getRideIdFn ? getRideIdFn() : null) || params?.rideId || params?.id;
+      const finalRideId = rideId || rideIdFromParams || currentStoreRideId || (getRideIdFn ? getRideIdFn() : null) || params?.rideId || params?.id;
       
       if (!finalRideId) {
         console.error('No ride ID provided for cancellation');
         console.error('Available params:', params);
         console.error('Parsed data:', parsedData);
-        console.error('Store rideId:', storeRideId);
         console.error('Current store rideId:', currentStoreRideId);
         showError('No ride ID found. Cannot cancel ride. Please go back and try again.');
         return;
@@ -133,7 +139,7 @@ const RideCancelScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [rideId, rideIdFromParams, storeRideId, getRideIdFn, router, rideCancelReason, reason, params, hasAttemptedCancel]);
+  }, [rideId, rideIdFromParams, getRideIdFn, router, rideCancelReason, reason, params, hasAttemptedCancel]);
 
   const handleCancelRide = () => {
     if (hasAttemptedCancel || loading) {

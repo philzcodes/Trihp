@@ -1,8 +1,9 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import Constant from '../../api/constants';
 import { authAPI } from '../../api/services';
 import { BackButton, TriphButton } from '../../components';
@@ -252,8 +253,10 @@ const Register = () => {
     name: 'Nigeria'
   });
   const [showCountryModal, setShowCountryModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
+  const [webViewLoading, setWebViewLoading] = useState(true);
   
   // Validation errors state
   const [errors, setErrors] = useState({
@@ -838,10 +841,16 @@ const Register = () => {
 
         {/* Terms and Conditions */}
         <View style={styles.termsContainer}>
+          <View style={styles.termsTextContainer}>
+            <Text style={styles.termsText}>
+              By proceeding, you accept the{' '}
+            </Text>
+            <Pressable onPress={() => setShowTermsModal(true)}>
+              <Text style={styles.termsLink}>Terms & Condition</Text>
+            </Pressable>
+          </View>
           <Text style={styles.termsText}>
-            By proceeding, you accept the{' '}
-            <Text style={styles.termsLink}>Terms & Condition</Text>
-            {'\n'}for using this service
+            for using this service
           </Text>
         </View>
 
@@ -923,6 +932,48 @@ const Register = () => {
             />
           </View>
         </View>
+      </Modal>
+
+      {/* Terms and Conditions Modal */}
+      <Modal
+        visible={showTermsModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowTermsModal(false)}
+      >
+        <SafeAreaView style={styles.termsModalContainer} edges={['top', 'bottom']}>
+          <View style={styles.termsModalHeader}>
+            <Text style={styles.termsModalTitle}>Terms and Conditions</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowTermsModal(false);
+                setWebViewLoading(true);
+              }}
+              style={styles.termsCloseButton}
+            >
+              <Ionicons name="close" size={24} color={Colors.whiteColor} />
+            </TouchableOpacity>
+          </View>
+          
+          {webViewLoading && (
+            <View style={styles.webViewLoader}>
+              <ActivityIndicator size="large" color={Colors.yellow || '#FFD700'} />
+              <Text style={styles.loadingText}>Loading Terms and Conditions...</Text>
+            </View>
+          )}
+          
+          <WebView
+            source={{ uri: 'https://trihp.com/terms-and-condition' }}
+            style={styles.webView}
+            onLoadStart={() => setWebViewLoading(true)}
+            onLoadEnd={() => setWebViewLoading(false)}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.error('WebView error: ', nativeEvent);
+              setWebViewLoading(false);
+            }}
+          />
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -1087,6 +1138,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     // paddingHorizontal: 10,
   },
+  termsTextContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   termsText: {
     ...Fonts.Regular,
     color: Colors.whiteColor || '#FFF',
@@ -1200,5 +1258,49 @@ const styles = StyleSheet.create({
     ...Fonts.Regular,
     fontSize: 14,
     color: Colors.grey8 || '#999',
+  },
+  // Terms Modal styles
+  termsModalContainer: {
+    flex: 1,
+    backgroundColor: Colors.blackColor || '#000',
+  },
+  termsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.grey11 || '#2A2A2A',
+  },
+  termsModalTitle: {
+    ...Fonts.TextBold,
+    fontSize: 20,
+    color: Colors.whiteColor || '#FFF',
+    flex: 1,
+  },
+  termsCloseButton: {
+    padding: 5,
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: Colors.blackColor || '#000',
+  },
+  webViewLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.blackColor || '#000',
+    zIndex: 1,
+  },
+  loadingText: {
+    ...Fonts.Regular,
+    color: Colors.whiteColor || '#FFF',
+    marginTop: 10,
+    fontSize: 14,
   },
 });

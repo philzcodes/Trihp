@@ -213,11 +213,15 @@ const AccountScreen = () => {
                         <MaterialIcons name="keyboard-arrow-right" size={24} color="#7E7E7E" style={styles.arrowIcon} />
                     </TouchableOpacity>
 
+                    {
+                    __DEV__ && (  
                     <TouchableOpacity style={styles.menuItem} onPress={navigateToReferAFriend}>
                         <MaterialIcons name="share" size={22} color="#FFFFFF" style={styles.menuIcon} />
                         <Text style={styles.menuText}>Refer a friend</Text>
                         <MaterialIcons name="keyboard-arrow-right" size={24} color="#7E7E7E" style={styles.arrowIcon} />
                     </TouchableOpacity>
+                  )
+                  }
                 </View>
 
                 <TouchableOpacity style={styles.driveEarnContainer} onPress={navigateToDriveAndEarn}>

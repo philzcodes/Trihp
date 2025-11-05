@@ -100,10 +100,25 @@ const OTP = () => {
     }
 
     if (!email) {
-      Alert.alert('Error', 'Email not found. Please try registering again.');
+      Alert.alert('Error', 'Email not found. Please try again.');
       return;
     }
 
+    // For forgot password flow, skip OTP verification and go directly to reset password
+    // The OTP will be verified when calling resetPassword API
+    if (fromForgotPassword) {
+      router.push({
+        pathname: '/(auth)/ResetPassword',
+        params: {
+          email: email,
+          userType: userType,
+          otp: otpString
+        }
+      });
+      return;
+    }
+
+    // For registration flow, verify the OTP using verifyEmail endpoint
     try {
       setLoading(true);
       
@@ -123,16 +138,6 @@ const OTP = () => {
         if (fromRegistration) {
           // Navigate to login screen after successful registration
           router.replace('/(auth)/Login');
-        } else if (fromForgotPassword) {
-          // Navigate to reset password screen
-          router.push({
-            pathname: '/(auth)/ResetPassword',
-            params: {
-              email: email,
-              userType: userType,
-              otp: otpString
-            }
-          });
         } else {
           // Navigate to main app
           router.replace('/');

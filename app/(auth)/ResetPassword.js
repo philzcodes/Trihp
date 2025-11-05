@@ -68,7 +68,9 @@ const ResetPassword = () => {
       
       const resetData = {
         otp: otp,
-        newPassword: newPassword
+        newPassword: newPassword,
+        email: email, // Include email for OTP verification
+        userType: userType // Include userType if needed
       };
 
       console.log('Reset password data:', resetData);

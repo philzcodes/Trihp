@@ -103,6 +103,16 @@ export const authAPI = {
       const formData = new URLSearchParams();
       formData.append('otp', resetData.otp);
       formData.append('newPassword', resetData.newPassword);
+      
+      // Include email if provided (needed for OTP verification)
+      if (resetData.email) {
+        formData.append('email', resetData.email);
+      }
+      
+      // Include userType if provided
+      if (resetData.userType) {
+        formData.append('userType', resetData.userType);
+      }
 
       const response = await api.post(Constant.resetPassword, formData.toString(), {
         headers: {
