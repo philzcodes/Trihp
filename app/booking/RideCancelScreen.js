@@ -117,9 +117,9 @@ const RideCancelScreen = () => {
       const response = await rideRequestAPI.cancelRide(finalRideId, cancellationData);
       if (__DEV__) {
         console.log('Ride cancellation response:', response);
+        showSuccess('Ride has been cancelled successfully');
       }
       
-      showSuccess('Ride has been cancelled successfully');
       router.push('/(tabs)/Dashboard');
       
     } catch (error) {

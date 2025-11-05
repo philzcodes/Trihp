@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
@@ -13,7 +14,32 @@ function BackButtonHandler() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', async () => {
+      const currentPath = segments.join('/');
+      
+      // Check if we're on an auth screen (login, signup, etc.)
+      const isAuthScreen = currentPath.includes('(auth)');
+      
+      // If on auth screen, prevent back navigation to protected screens
+      if (isAuthScreen) {
+        // Check if user is authenticated
+        try {
+          const userData = await AsyncStorage.getItem('userDetail');
+          if (!userData) {
+            // User is not authenticated, allow app to close or stay on auth screen
+            // If at login/signup, allow app to close
+            if (currentPath.includes('Login') || currentPath.includes('SignUp') || currentPath.includes('Onboarding')) {
+              return false; // Allow app to close
+            }
+            // Otherwise, prevent back navigation
+            return true;
+          }
+        } catch (error) {
+          // If error checking auth, allow app to close for safety
+          return false;
+        }
+      }
+      
       // Check if we can navigate back
       if (router.canGoBack()) {
         router.back();
@@ -21,8 +47,6 @@ function BackButtonHandler() {
       }
       
       // If we're at a root screen (like Onboarding, Splash, Welcome), allow exit
-      // Otherwise, try to navigate to Dashboard as a safe fallback
-      const currentPath = segments.join('/');
       const isRootScreen = 
         currentPath === '' || 
         currentPath === 'Onboarding' || 
@@ -35,13 +59,36 @@ function BackButtonHandler() {
         return false; // Allow default (app close)
       }
       
-      // Not at root but can't go back - try navigating to Dashboard
+      // Check if user is authenticated before allowing navigation to Dashboard
       try {
-        router.replace('/(tabs)/Dashboard');
-        return true; // Prevent default
+        const userData = await AsyncStorage.getItem('userDetail');
+        if (userData) {
+          // User is authenticated, allow navigation to Dashboard
+          try {
+            router.replace('/(tabs)/Dashboard');
+            return true; // Prevent default
+          } catch (error) {
+            // If navigation fails, allow default
+            return false;
+          }
+        } else {
+          // User is not authenticated, navigate to login instead
+          try {
+            router.replace('/(auth)/Login');
+            return true; // Prevent default
+          } catch (error) {
+            // If navigation fails, allow default
+            return false;
+          }
+        }
       } catch (error) {
-        // If navigation fails, allow default
-        return false;
+        // If error checking auth, navigate to login for safety
+        try {
+          router.replace('/(auth)/Login');
+          return true;
+        } catch (navError) {
+          return false;
+        }
       }
     });
 

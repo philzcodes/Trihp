@@ -146,7 +146,8 @@ const Settings = () => {
       // Clear local storage and state
       await logout();
       
-      // Navigate to login screen
+      // Reset navigation stack to prevent back navigation
+      router.dismissAll();
       router.replace('/(auth)/Login');
       
     } catch (error) {

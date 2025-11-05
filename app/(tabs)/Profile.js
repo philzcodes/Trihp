@@ -101,7 +101,9 @@ const AccountScreen = () => {
             // Clear local storage and state
             await logout();
             
-            // Navigate to login screen
+            // Reset navigation stack to prevent back navigation
+            // First dismiss all routes, then navigate to login
+            router.dismissAll();
             router.replace('/(auth)/Login');
             
         } catch (error) {
