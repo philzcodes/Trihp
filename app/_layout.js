@@ -5,6 +5,7 @@ import React, { useEffect } from 'react';
 import { BackHandler, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from '../components/Toast';
 import { Colors } from '../constants';
 
 function BackButtonHandler() {
@@ -136,6 +137,7 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: Colors.blackColor },
           }}
         />
+        <Toast />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

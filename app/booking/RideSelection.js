@@ -710,18 +710,54 @@ const RideSelection = () => {
           return;
         }
         
+        // Calculate perKMCharge and perMinuteCharge safely
+        let perKMCharge = 0;
+        let perMinuteCharge = 0;
+        
+        if (pricing && !pricing.error) {
+          // Calculate perKMCharge safely
+          if (pricing.estimatedDistance && pricing.estimatedDistance > 0) {
+            perKMCharge = pricing.distanceCharge / pricing.estimatedDistance;
+          } else if (rideRequestData.estimatedDistance && rideRequestData.estimatedDistance > 0) {
+            // Fallback: use totalFare / distance if available
+            perKMCharge = (price / rideRequestData.estimatedDistance) * 0.6; // 60% of fare per km
+          } else {
+            // Default fallback
+            perKMCharge = 25; // Default per km charge
+          }
+          
+          // Calculate perMinuteCharge safely
+          if (pricing.estimatedDuration && pricing.estimatedDuration > 0) {
+            perMinuteCharge = pricing.timeCharge / pricing.estimatedDuration;
+          } else if (rideRequestData.estimatedDuration && rideRequestData.estimatedDuration > 0) {
+            // Fallback: use totalFare / duration if available
+            perMinuteCharge = (price / rideRequestData.estimatedDuration) * 0.1; // 10% of fare per minute
+          } else {
+            // Default fallback
+            perMinuteCharge = 2; // Default per minute charge
+          }
+          
+          // Ensure values are valid numbers and >= 0
+          perKMCharge = Math.max(0, Number(perKMCharge) || 25);
+          perMinuteCharge = Math.max(0, Number(perMinuteCharge) || 2);
+        } else {
+          // Use fallback values if pricing is not available
+          perKMCharge = rideRequestData.perKMCharge || 25;
+          perMinuteCharge = rideRequestData.perMinuteCharge || 2;
+        }
+        
         // Update ride data with selected vehicle and pricing
         const rideDataToCreate = {
           ...rideRequestData,
           vehicleType: selectedVehicle.type,
           totalFare: price,
+          perKMCharge: perKMCharge,
+          perMinuteCharge: perMinuteCharge,
           ...(pricing && !pricing.error && {
-            baseFare: pricing.baseFare,
-            perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
-            perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
-            surgeMultiplier: pricing.surgeMultiplier,
-            tax: pricing.tax,
-            bookingFee: pricing.bookingFee,
+            baseFare: pricing.baseFare || rideRequestData.baseFare || 50,
+            surgeMultiplier: pricing.surgeMultiplier || 1.0,
+            tax: pricing.tax || 0,
+            bookingFee: pricing.bookingFee || 0,
           }),
         };
         
@@ -757,16 +793,48 @@ const RideSelection = () => {
         // Ride already exists - update it with selected vehicle and pricing
         console.log('Ride ID exists - updating ride request with selected vehicle and pricing...');
         
+        // Calculate perKMCharge and perMinuteCharge safely
+        let perKMCharge = 0;
+        let perMinuteCharge = 0;
+        
+        if (pricing && !pricing.error) {
+          // Calculate perKMCharge safely
+          if (pricing.estimatedDistance && pricing.estimatedDistance > 0) {
+            perKMCharge = pricing.distanceCharge / pricing.estimatedDistance;
+          } else if (rideInfo.estimatedDistance && rideInfo.estimatedDistance > 0) {
+            perKMCharge = (price / rideInfo.estimatedDistance) * 0.6; // 60% of fare per km
+          } else {
+            perKMCharge = 25; // Default per km charge
+          }
+          
+          // Calculate perMinuteCharge safely
+          if (pricing.estimatedDuration && pricing.estimatedDuration > 0) {
+            perMinuteCharge = pricing.timeCharge / pricing.estimatedDuration;
+          } else if (rideInfo.estimatedDuration && rideInfo.estimatedDuration > 0) {
+            perMinuteCharge = (price / rideInfo.estimatedDuration) * 0.1; // 10% of fare per minute
+          } else {
+            perMinuteCharge = 2; // Default per minute charge
+          }
+          
+          // Ensure values are valid numbers and >= 0
+          perKMCharge = Math.max(0, Number(perKMCharge) || 25);
+          perMinuteCharge = Math.max(0, Number(perMinuteCharge) || 2);
+        } else {
+          // Use existing values or fallbacks
+          perKMCharge = rideInfo.perKMCharge || 25;
+          perMinuteCharge = rideInfo.perMinuteCharge || 2;
+        }
+        
         const updateData = {
           vehicleType: selectedVehicle.type,
           totalFare: price,
+          perKMCharge: perKMCharge,
+          perMinuteCharge: perMinuteCharge,
           ...(pricing && !pricing.error && {
-            baseFare: pricing.baseFare,
-            perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
-            perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
-            surgeMultiplier: pricing.surgeMultiplier,
-            tax: pricing.tax,
-            bookingFee: pricing.bookingFee,
+            baseFare: pricing.baseFare || rideInfo.baseFare || 50,
+            surgeMultiplier: pricing.surgeMultiplier || 1.0,
+            tax: pricing.tax || 0,
+            bookingFee: pricing.bookingFee || 0,
           }),
         };
         

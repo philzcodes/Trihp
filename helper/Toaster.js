@@ -1,18 +1,18 @@
 // Toast notification helper
-import { Alert } from 'react-native';
+import { showToast } from '../components/Toast';
 
 export const showSucess = (message) => {
-  Alert.alert('Success', message);
+  showToast(message, 'success');
 };
 
 export const showSuccess = (message) => {
-  Alert.alert('Success', message);
+  showToast(message, 'success');
 };
 
 export const showError = (message) => {
-  Alert.alert('Error', message);
+  showToast(message, 'error');
 };
 
 export const showWarning = (message) => {
-  Alert.alert('Warning', message);
+  showToast(message, 'warning');
 };
