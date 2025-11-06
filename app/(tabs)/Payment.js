@@ -85,8 +85,8 @@ const Payment = () => {
     }, [pulseAnim, owing]);
 
     const formatCurrency = (amount, decimals = 0) => {
-        // Formats to match the image: $525 (no decimal places shown)
-        return `$${parseFloat(amount || 0).toFixed(decimals)}`;
+        // Formats to match the image: Le525 (no decimal places shown)
+        return `Le${parseFloat(amount || 0).toFixed(decimals)}`;
     };
 
     const handleCardPress = (item) => {

@@ -890,7 +890,7 @@ const RideSelection = () => {
           {isLoading ? (
             <ActivityIndicator size="small" color="#FFD700" />
           ) : (
-            <Text style={styles.vehiclePrice}>${price}</Text>
+            <Text style={styles.vehiclePrice}>Le{price}</Text>
           )}
         </View>
       </TouchableOpacity>

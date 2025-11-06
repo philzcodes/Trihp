@@ -14,7 +14,7 @@ const MOCK_RIDE_HISTORY = [
     location: 'Main Peninsular Rd',
     dateTime: '26 Sept - 10:00AM',
     status: 'completed',
-    amount: '$25',
+    amount: 'Le25',
   },
   {
     id: '2',
@@ -30,7 +30,7 @@ const MOCK_RIDE_HISTORY = [
     location: 'Main Peninsular Rd',
     dateTime: '26 Sept - 10:00AM',
     status: 'completed',
-    amount: '$25',
+    amount: 'Le25',
   },
   // Add more items here if needed for scrolling demonstration
 ];

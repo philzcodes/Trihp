@@ -94,7 +94,7 @@ const PayOutstanding = () => {
       >
         {/* Payment Request Section */}
         <View style={styles.paymentSection}>
-          <Text style={styles.paymentTitle}>Please pay ${amount}</Text>
+          <Text style={styles.paymentTitle}>Please pay Le{amount}</Text>
           <Text style={styles.errorMessage}>
             This payment couldn't be processed. Try again or pick another payment method to avoid service restriction
           </Text>

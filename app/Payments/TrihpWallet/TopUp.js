@@ -134,7 +134,7 @@ const TopUp = () => {
         <View style={styles.balanceSection}>
           <View style={styles.balanceContainer}>
             <Text style={styles.balanceLabel}>Current Balance</Text>
-            <Text style={styles.balanceAmount}>${balance || '745'}</Text>
+            <Text style={styles.balanceAmount}>Le{balance || '745'}</Text>
           </View>
           <View style={styles.divider} />
         </View>

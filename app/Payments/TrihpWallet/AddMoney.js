@@ -43,7 +43,7 @@ const AddMoney = () => {
               </View>
               <View style={styles.balanceContainer}>
                 <Text style={styles.balanceLabel}>Current Balance: </Text>
-                <Text style={styles.balanceAmount}>${amount || '0'}</Text>
+                <Text style={styles.balanceAmount}>Le{amount || '0'}</Text>
               </View>
             </View>
           </View>
@@ -57,7 +57,7 @@ const AddMoney = () => {
           {/* Amount Input Section */}
           <View style={styles.amountInputSection}>
             <View style={styles.amountInputWrapper}>
-              <Text style={styles.currencySymbol}>$</Text>
+              <Text style={styles.currencySymbol}>Le</Text>
               <TextInput
                 value={price}
                 onChangeText={setPrice}
@@ -71,7 +71,7 @@ const AddMoney = () => {
                 selectionColor={Colors.whiteColor}
               />
             </View>
-            <Text style={styles.minimumText}>Minimum Amount: $20</Text>
+            <Text style={styles.minimumText}>Minimum Amount: Le20</Text>
           </View>
 
           {/* Add Amount Button */}

@@ -87,7 +87,7 @@ const OutstandingPaymentSuccess = () => {
           ]}
         >
           <Text style={styles.successMessage}>
-            ${amount} Outstanding Payment{'\n'}Successful
+            Le{amount} Outstanding Payment{'\n'}Successful
           </Text>
         </Animated.View>
       </View>

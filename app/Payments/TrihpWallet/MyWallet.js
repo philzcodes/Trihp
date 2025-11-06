@@ -12,7 +12,7 @@ import useUserStore from '../../../store/userStore';
 const MyWallet = () => {
   const router = useRouter();
   const { userData, fetchUser } = useUserStore();
-  // Using a hardcoded value ($745) to match the image precisely
+  // Using a hardcoded value (Le745) to match the image precisely
   const walletAmount = 745; // userData?.data?.wallet_amount; 
   
   // NOTE: I'm commenting out the fetch logic as it's non-visual and not required for the screen's look
@@ -26,7 +26,7 @@ const MyWallet = () => {
   }, [fetchUser]);
   */
 
-  const formattedAmount = formatCurrency(walletAmount, 2); // Assuming formatCurrency adds the '$'
+  const formattedAmount = formatCurrency(walletAmount, 2); // Assuming formatCurrency adds the 'Le'
 
   const handleAddMoney = () => {
     // Navigate to the AddMoney screen as intended
@@ -49,8 +49,8 @@ const MyWallet = () => {
         {/* Wallet Balance Display Area */}
         <View style={styles.walletContainer}>
           <Text style={styles.walletAmount}>
-            {/* The image shows $745, using it directly */}
-            $745 
+            {/* The image shows Le745, using it directly */}
+            Le745 
             {/* If using dynamic data: {formattedAmount} */}
           </Text>
           <Text style={styles.walletBalanceText}>Trihp Wallet Balance</Text>

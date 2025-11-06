@@ -451,7 +451,7 @@ const FetchingRide = () => {
               </Pressable>
               
                <Text style={styles.paymentAmount}>
-                 ${fallbackData?.amount || '25'}
+                 Le{fallbackData?.amount || '25'}
                </Text>
             </View>
 

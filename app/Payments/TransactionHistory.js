@@ -83,7 +83,7 @@ const TransactionHistory = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `$${parseFloat(amount || 0).toFixed(2)}`;
+    return `Le${parseFloat(amount || 0).toFixed(2)}`;
   };
 
   const formatUTCDate = (dateString) => {

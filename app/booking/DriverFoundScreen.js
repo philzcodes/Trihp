@@ -318,7 +318,7 @@ const DriverFoundScreen = () => {
               <View style={styles.locationTextContainer}>
                 <Text style={styles.locationLabel}>Pickup Location</Text>
               </View>
-              <Text style={styles.priceText}>${rideInfo?.amount || '25'}</Text>
+              <Text style={styles.priceText}>Le{rideInfo?.amount || '25'}</Text>
             </View>
 
             {/* Drop off Location */}

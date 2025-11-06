@@ -17,8 +17,8 @@ export const haversineDistance = (coords1, coords2) => {
 };
 
 export const formatCurrency = (amount, decimals = 2) => {
-  if (amount === null || amount === undefined) return '$0.00';
-  return `$${parseFloat(amount).toFixed(decimals)}`;
+  if (amount === null || amount === undefined) return 'Le0.00';
+  return `Le${parseFloat(amount).toFixed(decimals)}`;
 };
 
 export const formatDateTime = (dateString) => {

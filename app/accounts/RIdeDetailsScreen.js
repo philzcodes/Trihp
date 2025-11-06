@@ -16,7 +16,7 @@ const RideDetailsScreen = () => {
         pickupTime: '9:42 pm',
         dropoffTime: '10:42 pm',
         paymentType: 'Cash',
-        fare: '$25',
+        fare: 'Le25',
         rideRating: 5, // Assuming a 5-star rating from the image
     };
 
