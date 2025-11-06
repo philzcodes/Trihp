@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   Platform,
   ScrollView,
@@ -42,6 +43,8 @@ const RideSelection = () => {
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const scrollViewRef = useRef(null);
+  const selectionAnimation = useRef(new Animated.Value(0)).current;
 
   // Vehicle data matching backend VehicleType enum (without hardcoded pricing)
   const vehicles = [
@@ -606,6 +609,20 @@ const RideSelection = () => {
     try {
       console.log('Vehicle selected:', vehicle);
       
+      // Animate selection feedback
+      Animated.sequence([
+        Animated.timing(selectionAnimation, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(selectionAnimation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
       setSelectedVehicle(vehicle);
       
       // Save selected vehicle type to AsyncStorage for future use
@@ -620,8 +637,16 @@ const RideSelection = () => {
         console.error('Error saving vehicle selection to storage:', storageError);
       }
       
-      // Reorder vehicles to put selected one first
-      reorderVehicles(vehicle.type);
+      // Delay reordering slightly to show selection feedback first
+      setTimeout(() => {
+        // Reorder vehicles to put selected one first
+        reorderVehicles(vehicle.type);
+        
+        // Scroll to top to show the selected vehicle
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollTo({ y: 0, animated: true });
+        }
+      }, 300);
       
       // Check if pricing exists for this vehicle, if not calculate it on-demand
       if (!vehiclePricing[vehicle.type] && !pricingLoading) {
@@ -641,7 +666,7 @@ const RideSelection = () => {
       console.error('Error handling vehicle selection:', error);
       // Don't show alert for selection - only for confirmation
     }
-  }, [vehiclePricing, pricingLoading, calculateVehiclePricing, reorderVehicles]);
+  }, [vehiclePricing, pricingLoading, calculateVehiclePricing, reorderVehicles, selectionAnimation]);
 
   // Handle confirm ride with auto-matching
   const handleConfirmRide = useCallback(async () => {
@@ -937,18 +962,29 @@ const RideSelection = () => {
     const pricing = vehiclePricing[item.type];
     const price = calculatePrice(item);
     const isLoading = pricingLoading && !pricing;
+    
+    // Animation for selected vehicle
+    const scaleAnim = isSelected ? selectionAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 1.02],
+    }) : 1;
 
     return (
-      <TouchableOpacity
-        key={item.id}
+      <Animated.View
         style={[
-          styles.vehicleCard,
-          isSelected && styles.selectedVehicleCard
+          { transform: [{ scale: scaleAnim }] }
         ]}
-        onPress={() => handleVehicleSelection(item)}
-        activeOpacity={0.7}
-        disabled={isLoading}
       >
+        <TouchableOpacity
+          key={item.id}
+          style={[
+            styles.vehicleCard,
+            isSelected && styles.selectedVehicleCard
+          ]}
+          onPress={() => handleVehicleSelection(item)}
+          activeOpacity={0.7}
+          disabled={isLoading}
+        >
         <Image 
           source={item.image} 
           style={styles.vehicleImage} 
@@ -975,8 +1011,9 @@ const RideSelection = () => {
           )}
         </View>
       </TouchableOpacity>
+      </Animated.View>
     );
-  }, [handleVehicleSelection, arrivalTime, duration, calculatePrice, vehiclePricing, pricingLoading]);
+  }, [handleVehicleSelection, arrivalTime, duration, calculatePrice, vehiclePricing, pricingLoading, selectionAnimation]);
 
   // Show loading only when actually loading
   if (loading) {
@@ -1042,6 +1079,7 @@ const RideSelection = () => {
         <View style={styles.titleUnderline} />
 
         <ScrollView 
+          ref={scrollViewRef}
           style={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContentContainer}
@@ -1284,10 +1322,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 2,
     borderColor: 'transparent',
+    position: 'relative',
   },
   selectedVehicleCard: {
-    borderColor: '#FFFFFF',
+    borderColor: '#FFD700',
     backgroundColor: '#3A3A3C',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   vehicleImage: {
     width: 80,
