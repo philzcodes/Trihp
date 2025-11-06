@@ -399,8 +399,9 @@ const SearchScreen = ({ route }) => {
         return;
       }
 
-      // Create ride request data
-      const rideRequestData = {
+      // Prepare ride data to pass to RideSelection (without creating in backend yet)
+      // The ride request will be created when user selects a vehicle and confirms
+      const rideData = {
         riderId: currentUserData.id,
         riderName: getUserName(),
         riderPhone: getUserPhone(),
@@ -421,57 +422,23 @@ const SearchScreen = ({ route }) => {
         isScheduled: false,
       };
 
-      // Create the ride request directly using the API
-      
-      if (!rideRequestAPI || !rideRequestAPI.createRideRequest) {
-        throw new Error('Ride request API is not available');
-      }
-      
-      const response = await rideRequestAPI.createRideRequest(rideRequestData);
-      
-      console.log('Ride request created successfully:', response);
-
-      // Extract response data - handle both response.data and direct response
-      const rideData = response?.data?.data || response?.data || response;
-      
-      // Extract ride ID - handle various response structures
-      const rideId = rideData?.id || rideData?.data?.id || response?.id || response?.data?.id;
-      
-      if (!rideId) {
-        console.error('Ride creation failed - no ride ID in response:', response);
-        throw new Error('Ride request creation failed - no response ID received');
-      }
-
-      // Create a proper ride object for the store
+      // Create a temporary ride object for the store (without backend ID)
+      // This will be replaced when the ride is actually created in RideSelection
       const rideObject = {
-        id: rideId,
         ...rideData,
-        pickupAddress: rideData?.pickupAddress || originLocation,
-        dropOffAddress: rideData?.dropOffAddress || destinationLocation,
-        estimatedDistance: rideData?.estimatedDistance || distance,
-        estimatedDuration: rideData?.estimatedDuration || estimatedDuration,
-        totalFare: rideData?.totalFare || Math.round(totalFare),
-        vehicleType: rideData?.vehicleType || selectedVehicleType || 'CAR',
+        pickupAddress: originLocation,
+        dropOffAddress: destinationLocation,
+        estimatedDistance: distance,
+        estimatedDuration: estimatedDuration,
+        totalFare: Math.round(totalFare),
+        vehicleType: selectedVehicleType || 'CAR',
       };
 
-      // Set the current ride in the store BEFORE navigation
-      console.log('Setting current ride in store:', rideObject);
+      // Set the current ride in the store BEFORE navigation (without backend ID)
+      console.log('Setting temporary ride data in store (will be created when user confirms):', rideObject);
       setCurrentRide(rideObject);
 
-      // Save destination location to history
-      if (rideData?.dropOffAddress || destinationLocation) {
-        await saveRideLocation({
-          id: rideId,
-          dropOffAddress: rideData?.dropOffAddress || destinationLocation,
-          dropOffLatitude: rideData?.dropOffLatitude || destinationCoordinates.latitude,
-          dropOffLongitude: rideData?.dropOffLongitude || destinationCoordinates.longitude,
-        });
-        // Refresh recent locations
-        loadRecentLocations();
-      }
-
-      console.log('Navigating to RideSelection with params:', {
-        rideId: rideId,
+      console.log('Navigating to RideSelection with ride data (ride will be created on confirmation):', {
         pickupAddress: originLocation,
         destinationAddress: destinationLocation,
         estimatedDistance: distance.toString(),
@@ -479,22 +446,23 @@ const SearchScreen = ({ route }) => {
         totalFare: Math.round(totalFare).toString(),
       });
 
-      // Navigate to RideSelection with ride data
+      // Navigate to RideSelection with ride data (no rideId yet - will be created on confirmation)
       router.push({
         pathname: '/booking/RideSelection',
         params: {
-          rideId: rideId,
+          // Pass ride data as JSON string since params don't support objects
+          rideData: JSON.stringify(rideData),
           pickupAddress: originLocation,
           destinationAddress: destinationLocation,
           estimatedDistance: distance.toString(),
           estimatedDuration: estimatedDuration.toString(),
           totalFare: Math.round(totalFare).toString(),
-          selectedVehicleType: selectedVehicleType || rideData?.vehicleType || 'CAR', // Pass selected vehicle type from Services page
+          selectedVehicleType: selectedVehicleType || 'CAR', // Pass selected vehicle type from Services page
         }
       });
 
     } catch (error) {
-      console.error('Error creating ride request:', error);
+      console.error('Error preparing ride data:', error);
       
       // Reset the creating ride state
       setIsCreatingRide(false);
@@ -502,12 +470,8 @@ const SearchScreen = ({ route }) => {
       // Check if it's an authentication error
       if (error?.statusCode === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('Invalid or Expired Token')) {
         showAlert('error', 'Authentication Required', 'Your session has expired. Please log in again to create a ride request.');
-      } else if (error?.message?.includes('Ride request API is not available')) {
-        showAlert('error', 'Service Error', 'The ride request service is temporarily unavailable. Please try again later.');
-      } else if (error?.message?.includes('no response ID received')) {
-        showAlert('error', 'Request Failed', 'Failed to create ride request. Please check your connection and try again.');
       } else {
-        showAlert('error', 'Error', 'Failed to create ride request. Please try again.');
+        showAlert('error', 'Error', 'Failed to prepare ride data. Please try again.');
       }
     } finally {
       setLoading(false);

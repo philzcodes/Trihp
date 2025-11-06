@@ -304,6 +304,7 @@ const RideSelection = () => {
       try {
         console.log('RideSelection - Initializing with params:', {
           rideId: params.rideId,
+          rideData: params.rideData,
           pickupAddress: params.pickupAddress,
           destinationAddress: params.destinationAddress,
           estimatedDistance: params.estimatedDistance,
@@ -314,11 +315,28 @@ const RideSelection = () => {
         
         let rideInfo = currentRide;
         
-        // Validate that we have a ride ID
+        // Check if rideData is passed in params (new flow - ride not created yet)
+        if (params.rideData) {
+          try {
+            const parsedRideData = JSON.parse(params.rideData);
+            console.log('Parsed rideData from params:', parsedRideData);
+            rideInfo = parsedRideData;
+            // Set the ride data in store (without ID - will be created on confirmation)
+            setCurrentRide(rideInfo);
+            setRideData(rideInfo);
+            setLoading(false);
+            return; // Don't try to fetch from backend - ride doesn't exist yet
+          } catch (parseError) {
+            console.error('Error parsing rideData from params:', parseError);
+          }
+        }
+        
+        // Validate that we have a ride ID (for existing rides)
         const rideId = params.rideId || currentRide?.id || rideInfo?.id;
         
-        if (!rideId) {
-          console.error('No ride ID found in params or store. Cannot proceed.');
+        // If no rideId and no rideData, show error
+        if (!rideId && !params.rideData) {
+          console.error('No ride ID or rideData found in params or store. Cannot proceed.');
           Alert.alert(
             'Missing Ride Information',
             'No active ride found. Please go back and create a new ride request.',
@@ -334,8 +352,8 @@ const RideSelection = () => {
           return;
         }
         
-        // If no current ride in store, fetch from database using rideId
-        if (!rideInfo || !rideInfo.id) {
+        // If no current ride in store but we have a rideId, fetch from database
+        if (rideId && (!rideInfo || !rideInfo.id)) {
           console.log('Fetching ride data from database for rideId:', rideId);
           try {
             const response = await rideRequestAPI.getRideRequest(rideId);
@@ -635,42 +653,105 @@ const RideSelection = () => {
     try {
       console.log('Starting ride confirmation with auto-matching...');
       
-      // Get ride ID from multiple possible sources
-      const rideId = currentRide?.id || rideData?.id || params.rideId;
-      
-      if (!rideId) {
-        Alert.alert('Error', 'No active ride found. Please go back and create a new ride request.');
-        return;
-      }
-      
       // Get pricing data for the selected vehicle
       const pricing = vehiclePricing[selectedVehicle.type];
       const price = calculatePrice(selectedVehicle);
       
-      // Update ride request with selected vehicle and pricing BEFORE auto-matching
-      console.log('Updating ride request with selected vehicle and pricing...');
+      // Get ride ID from multiple possible sources
+      let rideId = currentRide?.id || rideData?.id || params.rideId;
+      let rideInfo = currentRide || rideData;
       
-      const updateData = {
-        vehicleType: selectedVehicle.type,
-        totalFare: price,
-        ...(pricing && !pricing.error && {
-          baseFare: pricing.baseFare,
-          perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
-          perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
-          surgeMultiplier: pricing.surgeMultiplier,
-          tax: pricing.tax,
-          bookingFee: pricing.bookingFee,
-        }),
-      };
-      
-      // Update the ride request first
-      const updatedRide = await updateRideRequest(rideId, updateData);
-      console.log('Ride request updated successfully:', updatedRide);
-      
-      // Update store with updated ride
-      const rideInfo = updatedRide?.data || updatedRide || currentRide || rideData;
-      if (rideInfo) {
+      // If no rideId exists, create the ride request first
+      if (!rideId) {
+        console.log('No ride ID found - creating ride request now...');
+        
+        // Get ride data from params or currentRide
+        let rideRequestData;
+        if (params.rideData) {
+          try {
+            rideRequestData = JSON.parse(params.rideData);
+          } catch (parseError) {
+            console.error('Error parsing rideData from params:', parseError);
+            rideRequestData = currentRide || rideData;
+          }
+        } else {
+          rideRequestData = currentRide || rideData;
+        }
+        
+        if (!rideRequestData) {
+          Alert.alert('Error', 'No ride data found. Please go back and create a new ride request.');
+          return;
+        }
+        
+        // Update ride data with selected vehicle and pricing
+        const rideDataToCreate = {
+          ...rideRequestData,
+          vehicleType: selectedVehicle.type,
+          totalFare: price,
+          ...(pricing && !pricing.error && {
+            baseFare: pricing.baseFare,
+            perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
+            perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
+            surgeMultiplier: pricing.surgeMultiplier,
+            tax: pricing.tax,
+            bookingFee: pricing.bookingFee,
+          }),
+        };
+        
+        // Create the ride request
+        console.log('Creating ride request with data:', rideDataToCreate);
+        const { rideRequestAPI } = await import('../../api/rideRequestAPI');
+        const createResponse = await rideRequestAPI.createRideRequest(rideDataToCreate);
+        
+        console.log('Ride request created successfully:', createResponse);
+        
+        // Extract ride ID from response
+        const createdRideData = createResponse?.data?.data || createResponse?.data || createResponse;
+        rideId = createdRideData?.id || createResponse?.id;
+        
+        if (!rideId) {
+          console.error('Ride creation failed - no ride ID in response:', createResponse);
+          throw new Error('Ride request creation failed - no response ID received');
+        }
+        
+        // Update rideInfo with created ride data
+        rideInfo = {
+          ...rideDataToCreate,
+          id: rideId,
+          ...createdRideData,
+        };
+        
+        // Set the created ride in the store
         setCurrentRide(rideInfo);
+        setRideData(rideInfo);
+        
+        console.log('Ride request created with ID:', rideId);
+      } else {
+        // Ride already exists - update it with selected vehicle and pricing
+        console.log('Ride ID exists - updating ride request with selected vehicle and pricing...');
+        
+        const updateData = {
+          vehicleType: selectedVehicle.type,
+          totalFare: price,
+          ...(pricing && !pricing.error && {
+            baseFare: pricing.baseFare,
+            perKMCharge: pricing.distanceCharge / (pricing.estimatedDistance || 1),
+            perMinuteCharge: pricing.timeCharge / (pricing.estimatedDuration || 1),
+            surgeMultiplier: pricing.surgeMultiplier,
+            tax: pricing.tax,
+            bookingFee: pricing.bookingFee,
+          }),
+        };
+        
+        // Update the ride request
+        const updatedRide = await updateRideRequest(rideId, updateData);
+        console.log('Ride request updated successfully:', updatedRide);
+        
+        // Update store with updated ride
+        rideInfo = updatedRide?.data || updatedRide || currentRide || rideData;
+        if (rideInfo) {
+          setCurrentRide(rideInfo);
+        }
       }
       
       // Import the auto-matching API
@@ -733,7 +814,7 @@ const RideSelection = () => {
       console.error('Error confirming ride:', error);
       Alert.alert('Error', 'Failed to confirm ride. Please try again.');
     }
-  }, [selectedVehicle, currentRide, rideData, params.rideId, calculatePrice, updateRideRequest, vehiclePricing, setCurrentRide, router]);
+  }, [selectedVehicle, currentRide, rideData, params.rideId, params.rideData, calculatePrice, updateRideRequest, vehiclePricing, setCurrentRide, router]);
 
   const originCoordinates = parsedCoordinates.origin || {
     latitude: 4.8666,
