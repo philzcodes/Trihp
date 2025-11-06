@@ -166,40 +166,41 @@ const RideSelection = () => {
   }, [vehicles, moreVehicles]);
 
   // Load last selected vehicle type from AsyncStorage and reorder vehicles
-  useEffect(() => {
-    const loadLastSelectedVehicle = async () => {
-      try {
-        // Priority 1: Check route params first (from Services page) - this takes highest priority
-        const routeVehicleType = params?.selectedVehicleType || rideData?.vehicleType;
-        
-        if (routeVehicleType) {
-          // Only reorder if we haven't already done it for this vehicle type
-          if (lastReorderedVehicleTypeRef.current !== routeVehicleType) {
-            console.log('Using vehicle type from route params (Services):', routeVehicleType);
-            reorderVehicles(routeVehicleType);
-          }
-          return; // Exit early if route params have vehicle type
-        }
-        
-        // Priority 2: Check stored preference (only if no route params)
-        const storedData = await AsyncStorage.getItem('selectedRideType');
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          const lastVehicleType = parsedData?.type || parsedData?.vehicleType;
-          
-          if (lastVehicleType && lastReorderedVehicleTypeRef.current !== lastVehicleType) {
-            console.log('Using stored vehicle type:', lastVehicleType);
-            reorderVehicles(lastVehicleType);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading last selected vehicle:', error);
-      }
-    };
+  // COMMENTED OUT: Removed automatic reordering on load
+  // useEffect(() => {
+  //   const loadLastSelectedVehicle = async () => {
+  //     try {
+  //       // Priority 1: Check route params first (from Services page) - this takes highest priority
+  //       const routeVehicleType = params?.selectedVehicleType || rideData?.vehicleType;
+  //       
+  //       if (routeVehicleType) {
+  //         // Only reorder if we haven't already done it for this vehicle type
+  //         if (lastReorderedVehicleTypeRef.current !== routeVehicleType) {
+  //           console.log('Using vehicle type from route params (Services):', routeVehicleType);
+  //           reorderVehicles(routeVehicleType);
+  //         }
+  //         return; // Exit early if route params have vehicle type
+  //       }
+  //       
+  //       // Priority 2: Check stored preference (only if no route params)
+  //       const storedData = await AsyncStorage.getItem('selectedRideType');
+  //       if (storedData) {
+  //         const parsedData = JSON.parse(storedData);
+  //         const lastVehicleType = parsedData?.type || parsedData?.vehicleType;
+  //         
+  //         if (lastVehicleType && lastReorderedVehicleTypeRef.current !== lastVehicleType) {
+  //           console.log('Using stored vehicle type:', lastVehicleType);
+  //           reorderVehicles(lastVehicleType);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error loading last selected vehicle:', error);
+  //     }
+  //   };
 
-    loadLastSelectedVehicle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params?.selectedVehicleType, rideData?.vehicleType]); // Removed reorderVehicles to prevent infinite loops
+  //   loadLastSelectedVehicle();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [params?.selectedVehicleType, rideData?.vehicleType]); // Removed reorderVehicles to prevent infinite loops
 
   // Dummy driver markers for the map
   const dummyDrivers = [
@@ -638,15 +639,16 @@ const RideSelection = () => {
       }
       
       // Delay reordering slightly to show selection feedback first
-      setTimeout(() => {
-        // Reorder vehicles to put selected one first
-        reorderVehicles(vehicle.type);
-        
-        // Scroll to top to show the selected vehicle
-        if (scrollViewRef.current) {
-          scrollViewRef.current.scrollTo({ y: 0, animated: true });
-        }
-      }, 300);
+      // COMMENTED OUT: Removed automatic reordering to top
+      // setTimeout(() => {
+      //   // Reorder vehicles to put selected one first
+      //   reorderVehicles(vehicle.type);
+      //   
+      //   // Scroll to top to show the selected vehicle
+      //   if (scrollViewRef.current) {
+      //     scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      //   }
+      // }, 300);
       
       // Check if pricing exists for this vehicle, if not calculate it on-demand
       if (!vehiclePricing[vehicle.type] && !pricingLoading) {
@@ -1316,22 +1318,19 @@ const styles = StyleSheet.create({
   vehicleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2C2C2E',
+    backgroundColor: 'transparent',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 2,
+    borderWidth: 0,
     borderColor: 'transparent',
     position: 'relative',
   },
   selectedVehicleCard: {
-    borderColor: '#FFD700',
-    backgroundColor: '#3A3A3C',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#2C2C2E',
+    borderRadius: 16,
   },
   vehicleImage: {
     width: 80,
