@@ -17,6 +17,27 @@ function BackButtonHandler() {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', async () => {
       const currentPath = segments.join('/');
       
+      // Check if we're on Countdown screen - allow app to close or navigate to login
+      if (currentPath.includes('Countdown')) {
+        try {
+          const userData = await AsyncStorage.getItem('userDetail');
+          if (userData) {
+            // User is logged in, allow app to close (they can use Next button to go to Dashboard)
+            return false; // Allow app to close
+          } else {
+            // User not logged in, navigate to login
+            try {
+              router.replace('/(auth)/Login');
+              return true; // Prevent default
+            } catch (error) {
+              return false;
+            }
+          }
+        } catch (error) {
+          return false; // Allow app to close on error
+        }
+      }
+      
       // Check if we're on an auth screen (login, signup, etc.)
       const isAuthScreen = currentPath.includes('(auth)');
       
@@ -40,10 +61,15 @@ function BackButtonHandler() {
         }
       }
       
-      // Check if we can navigate back
-      if (router.canGoBack()) {
-        router.back();
-        return true; // Prevent default behavior (app close)
+      // Check if we can navigate back (only if there's actually a screen to go back to)
+      try {
+        if (router.canGoBack()) {
+          router.back();
+          return true; // Prevent default behavior (app close)
+        }
+      } catch (error) {
+        // If canGoBack check fails, continue to fallback logic
+        console.log('Navigation error:', error);
       }
       
       // If we're at a root screen (like Onboarding, Splash, Welcome), allow exit

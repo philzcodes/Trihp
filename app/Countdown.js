@@ -1,10 +1,11 @@
-import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 export default function CountdownScreen() {
+  const router = useRouter();
   const [timeLeft, setTimeLeft] = useState({
     days: 7,
     hours: 23,
@@ -37,11 +38,12 @@ export default function CountdownScreen() {
       <View style={styles.content}>
         {/* Image Placeholder */}
         <View style={styles.imageContainer}>
-            
           <Image source={require('../assets/countdown-image.png')} style={{width: '100%', height: '100%'}} />
         </View>
 
-       <View style={{position: 'absolute', top: 30, alignItems: 'center', justifyContent: 'center', width: '100%'}}><Text style={{ fontSize: 32, fontWeight: '600', color: 'black'}}>T R I H P</Text></View>
+        <View style={{position: 'absolute', top: 30, alignItems: 'center', justifyContent: 'center', width: '100%'}}>
+          <Text style={{ fontSize: 32, fontWeight: '600', color: 'black'}}>T R I H P</Text>
+        </View>
 
         {/* Bottom Section */}
         <View style={styles.bottomSection}>
@@ -86,10 +88,13 @@ export default function CountdownScreen() {
             </View>
           </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity style={styles.logoutButton}>
-            <Feather name="log-out" size={18} color="#FF3B30" />
-            <Text style={styles.logoutText}>Logout</Text>
+          {/* Next Button */}
+          <TouchableOpacity 
+            style={styles.nextButton}
+            onPress={() => router.replace('/(tabs)/Dashboard')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.nextText}>Next</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -109,8 +114,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'yellow',
     justifyContent: 'center',
     alignItems: 'center',
-    height: 350,
-    
+    height: '40%',
+    maxHeight: 350,
   },
   imagePlaceholder: {
     justifyContent: 'center',
@@ -125,9 +130,11 @@ const styles = StyleSheet.create({
   bottomSection: {
     backgroundColor: '#000000',
     paddingHorizontal: 10,
-    paddingTop: 40,
-    paddingBottom: 40,
+    paddingTop: 30,
+    paddingBottom: 20,
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between',
   },
   welcomeText: {
     fontSize: 21,
@@ -158,7 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 60,
+    marginBottom: 30,
   },
   timeUnit: {
     alignItems: 'center',
@@ -182,17 +189,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginTop: 20,
   },
-  logoutButton: {
-    flexDirection: 'row',
+  nextButton: {
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 2,
-    alignSelf: 'flex-start',
-    paddingLeft: 10,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    backgroundColor: '#FFDE59',
+    borderRadius: 12,
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 400,
+    marginTop: 'auto',
+    marginBottom: 30,
   },
-  logoutText: {
-    fontSize: 16,
-    color: '#FF3B30',
-    fontWeight: '500',
+  nextText: {
+    fontSize: 18,
+    color: '#000000',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

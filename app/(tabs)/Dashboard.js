@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -371,74 +372,81 @@ const Dashboard = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
+      <ImageBackground
+        source={require('../../assets/images/map-background.png')}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}
+        resizeMode="cover"
       >
-        <View style={styles.container}>
-          <DashboardHeader />
-          
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.yellow} />
-            </View>
-          ) : (
-            <ScrollView 
-              showsVerticalScrollIndicator={false} 
-              contentContainerStyle={styles.scrollView}
-            >
-              {/* Swipable Banner */}
-              <View style={styles.bannerWrapper}>
-                <FlatList
-                  ref={bannerRef}
-                  data={bannerData}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onScroll={handleBannerScroll}
-                  scrollEventThrottle={16}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderBannerItem}
-                />
-                
-                {/* Banner Indicators */}
-                <View style={styles.bannerIndicators}>
-                  {bannerData.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.indicator,
-                        index === currentBannerIndex && styles.activeIndicator
-                      ]}
-                    />
-                  ))}
+        <View style={styles.overlay} />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
+          <View style={styles.container}>
+            <DashboardHeader />
+            
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.yellow} />
+              </View>
+            ) : (
+              <ScrollView 
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={styles.scrollView}
+              >
+                {/* Swipable Banner */}
+                <View style={styles.bannerWrapper}>
+                  <FlatList
+                    ref={bannerRef}
+                    data={bannerData}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={handleBannerScroll}
+                    scrollEventThrottle={16}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderBannerItem}
+                  />
+                  
+                  {/* Banner Indicators */}
+                  <View style={styles.bannerIndicators}>
+                    {bannerData.map((_, index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.indicator,
+                          index === currentBannerIndex && styles.activeIndicator
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </View>
-              </View>
 
-              {/* Search Input */}
-              <DashBoardInput onPress={handleSearchPress} />
+                {/* Search Input */}
+                <DashBoardInput onPress={handleSearchPress} />
 
-              {/* Recent Rides */}
-              <View>
-                <FlatList
-                  data={loading ? Array(2).fill({}) : recentRide}
-                  scrollEnabled={false}
-                  keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
-                  ListEmptyComponent={() => (
-                    <View style={styles.emptyContainer}>
-                      <Text style={styles.noRecentRideText}>No recent ride available</Text>
-                    </View>
-                  )}
-                  contentContainerStyle={styles.historyList}
-                  renderItem={loading ? renderSkeletonItem : renderRideItem}
-                />
-              </View>
+                {/* Recent Rides */}
+                <View>
+                  <FlatList
+                    data={loading ? Array(2).fill({}) : recentRide}
+                    scrollEnabled={false}
+                    keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
+                    ListEmptyComponent={() => (
+                      <View style={styles.emptyContainer}>
+                        <Text style={styles.noRecentRideText}>No recent ride available</Text>
+                      </View>
+                    )}
+                    contentContainerStyle={styles.historyList}
+                    renderItem={loading ? renderSkeletonItem : renderRideItem}
+                  />
+                </View>
 
-            </ScrollView>
-          )}
-        </View>
-      </KeyboardAvoidingView>
-
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </ImageBackground>
     </SafeAreaView>
   );
 };
@@ -448,9 +456,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.blackColor,
   },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  backgroundImageStyle: {
+    opacity: 0.3, // Dark opacity for the background image
+    transform: [{ scale: 1.2 }], // Zoom in the background image
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Additional dark overlay for better contrast
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.blackColor,
     padding: 20,
     // paddingBottom: 50,
   },

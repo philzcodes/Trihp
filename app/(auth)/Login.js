@@ -117,7 +117,7 @@ const Login = () => {
         // Navigate after a short delay to show success message
         setTimeout(() => {
           hideAlert();
-          router.replace('/(tabs)/Dashboard');
+          router.replace('/Countdown');
         }, 1500);
       } else {
         showAlert('error', 'Error', response.message || 'Login failed. Please check your credentials.');
