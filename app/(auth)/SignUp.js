@@ -1,7 +1,7 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import Constant from '../../api/constants';
@@ -211,12 +211,12 @@ const countries = [
 // Helper function to format error messages (handles arrays and objects)
 const formatErrorMessage = (error) => {
   if (!error) return 'An unexpected error occurred.';
-  
+
   // If error is an array, join the messages
   if (Array.isArray(error)) {
     return error.join('\n');
   }
-  
+
   // If error is an object with message property
   if (typeof error === 'object' && error.message) {
     if (Array.isArray(error.message)) {
@@ -224,12 +224,12 @@ const formatErrorMessage = (error) => {
     }
     return error.message;
   }
-  
+
   // If error is a string
   if (typeof error === 'string') {
     return error;
   }
-  
+
   // Fallback
   return 'An unexpected error occurred. Please try again.';
 };
@@ -257,7 +257,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
   const [webViewLoading, setWebViewLoading] = useState(true);
-  
+
   // Alert modal state
   const [alertModal, setAlertModal] = useState({
     visible: false,
@@ -265,7 +265,7 @@ const Register = () => {
     title: '',
     message: '',
   });
-  
+
   const showAlert = (type, title, message) => {
     setAlertModal({
       visible: true,
@@ -274,7 +274,7 @@ const Register = () => {
       message,
     });
   };
-  
+
   const hideAlert = () => {
     setAlertModal({
       visible: false,
@@ -283,7 +283,7 @@ const Register = () => {
       message: '',
     });
   };
-  
+
   // Validation errors state
   const [errors, setErrors] = useState({
     phoneNumber: '',
@@ -293,7 +293,7 @@ const Register = () => {
     firstName: '',
     lastName: ''
   });
-  
+
   // Track if fields have been touched
   const [touched, setTouched] = useState({
     phoneNumber: false,
@@ -313,7 +313,7 @@ const Register = () => {
 
     try {
       setLoading(true);
-      
+
       // Build userData object, only including middleName if it has a valid value
       const userData = {
         firstName: firstName.trim(),
@@ -333,14 +333,14 @@ const Register = () => {
       }
 
       const response = await authAPI.register(userData);
-      
+
       setLoading(false);
-      
+
       if (response.success) {
         // Navigate to OTP verification screen with email
         router.push({
           pathname: '/(auth)/OTP',
-          params: { 
+          params: {
             email: email,
             userType: 'RIDER',
             fromRegistration: true
@@ -351,44 +351,71 @@ const Register = () => {
         const errorMessage = formatErrorMessage(response.message || 'Registration failed. Please try again.');
         showAlert('error', 'Error', errorMessage);
       }
-      
+
     } catch (error) {
       setLoading(false);
       console.error('Registration error:', error);
-      
-      // Extract error message from error object
+      console.error('Error response data:', error?.response?.data || error?.responseData);
+      console.error('Error status code:', error?.response?.status);
+
+      // Extract error message and data from error object
+      // The API service wraps errors, so check both error.response.data and error.responseData
+      const errorData = error?.response?.data || error?.responseData || {};
       let errorMessage = 'Registration failed. Please try again.';
-      
-      if (error?.response?.data) {
-        // Error from axios response
-        const errorData = error.response.data;
-        errorMessage = formatErrorMessage(errorData.message || errorData.error || errorMessage);
+      const statusCode = error?.response?.status || errorData?.statusCode;
+
+      // Extract error message from various possible locations
+      if (errorData?.message) {
+        errorMessage = formatErrorMessage(errorData.message);
+      } else if (errorData?.error) {
+        errorMessage = formatErrorMessage(errorData.error);
       } else if (error?.message) {
-        // Direct error message
         errorMessage = formatErrorMessage(error.message);
       } else if (typeof error === 'string') {
-        // String error
         errorMessage = formatErrorMessage(error);
       }
-      
-      // Check if user already exists but hasn't verified OTP
+
       const errorMessageLower = errorMessage.toLowerCase();
+      console.log('Extracted error message:', errorMessage);
+      console.log('Status code:', statusCode);
+
+      // Check if user already exists (by email, phone, message, or status code)
+      // Status codes 400 and 409 can indicate user already exists
       const isUserAlreadyExists = errorMessageLower.includes('user already exists') ||
-                                  errorMessageLower.includes('already registered') ||
-                                  errorMessageLower.includes('account not verified') ||
-                                  errorMessageLower.includes('email is not verified') ||
-                                  errorMessageLower.includes('email not verified') ||
-                                  errorMessageLower.includes('not verified');
-      
-      // Also check error response data for status codes that might indicate unverified user
-      const statusCode = error?.response?.status;
-      const isUnverifiedUser = statusCode === 409 || statusCode === 400; // 409 Conflict, 400 Bad Request
-      
-      if (isUserAlreadyExists || (isUnverifiedUser && errorMessageLower.includes('already'))) {
+        errorMessageLower.includes('already registered') ||
+        errorMessageLower.includes('email already') ||
+        errorMessageLower.includes('phone number already') ||
+        errorMessageLower.includes('phone already') ||
+        errorMessageLower.includes('email is already') ||
+        errorMessageLower.includes('email has already') ||
+        (statusCode === 409) || // 409 Conflict
+        (statusCode === 400 && errorMessageLower.includes('already')); // 400 with "already" message
+
+      // Check if user exists but is NOT verified (only redirect to OTP in this case)
+      // We need explicit indication that the user is unverified - default to false if not specified
+      const isUnverifiedUser = errorMessageLower.includes('not verified') ||
+        errorMessageLower.includes('email not verified') ||
+        errorMessageLower.includes('email is not verified') ||
+        errorMessageLower.includes('account not verified') ||
+        errorMessageLower.includes('unverified') ||
+        errorMessageLower.includes('not yet verified') ||
+        errorMessageLower.includes('verification pending') ||
+        errorMessageLower.includes('pending verification') ||
+        (errorData.isVerified === false) ||
+        (errorData.verified === false) ||
+        (errorData.emailVerified === false);
+
+      console.log('User already exists:', isUserAlreadyExists);
+      console.log('User is unverified:', isUnverifiedUser);
+
+      // Only redirect to OTP if user exists AND is explicitly unverified
+      // If verification status is unknown, we should NOT redirect to OTP
+      if (isUserAlreadyExists && isUnverifiedUser) {
+        console.log('User exists but is unverified - redirecting to OTP');
         // User already registered but not verified - redirect to OTP page
         router.push({
           pathname: '/(auth)/OTP',
-          params: { 
+          params: {
             email: email.trim(),
             userType: 'RIDER',
             fromRegistration: true
@@ -396,7 +423,27 @@ const Register = () => {
         });
         return; // Don't show error alert
       }
-      
+
+      // If user already exists but verification status is unknown or user is verified, show error
+      // This is the safe default - don't redirect to OTP unless we're certain user is unverified
+      if (isUserAlreadyExists) {
+        console.log('User already exists (verified or status unknown) - showing error message');
+        // Check if email or phone is the issue and provide a specific message
+        let specificMessage = 'An account with this information already exists. ';
+
+        // Try to identify which field caused the conflict
+        if (errorMessageLower.includes('email')) {
+          specificMessage = 'An account with this email address already exists. ';
+        } else if (errorMessageLower.includes('phone') || errorMessageLower.includes('phone number')) {
+          specificMessage = 'An account with this phone number already exists. ';
+        }
+
+        specificMessage += 'Please try logging in instead.';
+        showAlert('error', 'Account Already Exists', specificMessage);
+        return;
+      }
+
+      // For all other errors, show the error message
       showAlert('error', 'Registration Error', errorMessage);
     }
   };
@@ -413,11 +460,11 @@ const Register = () => {
 
   // Filter countries based on search query
   const filteredCountries = countrySearchQuery
-    ? countries.filter(country => 
-        country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
-        country.callingCode.includes(countrySearchQuery) ||
-        country.code.toLowerCase().includes(countrySearchQuery.toLowerCase())
-      )
+    ? countries.filter(country =>
+      country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
+      country.callingCode.includes(countrySearchQuery) ||
+      country.code.toLowerCase().includes(countrySearchQuery.toLowerCase())
+    )
     : countries;
 
   // Validation functions
@@ -556,7 +603,7 @@ const Register = () => {
   // Mark field as touched when user leaves it
   const handleBlur = (field) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
+
     // Validate on blur
     switch (field) {
       case 'phoneNumber':
@@ -590,7 +637,7 @@ const Register = () => {
       firstName: validateName(firstName, 'First name'),
       lastName: validateName(lastName, 'Last name')
     };
-    
+
     setErrors(newErrors);
     setTouched({
       phoneNumber: true,
@@ -600,39 +647,39 @@ const Register = () => {
       firstName: true,
       lastName: true
     });
-    
+
     return !Object.values(newErrors).some(error => error !== '');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <BackButton onPress={() => router.back()} />
-      
-      <ScrollView 
-        style={styles.scrollView} 
+
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Register</Text>
-        
+
         {/* Phone Number Input with Country Selector */}
         <View style={styles.inputWrapper}>
           <View style={[
             styles.phoneInputContainer,
             errors.phoneNumber && styles.inputError
           ]}>
-            <Pressable 
+            <Pressable
               style={styles.flagContainer}
               onPress={handleCountrySelect}
             >
               <Text style={styles.flagText}>{selectedCountry.flag}</Text>
-              <MaterialIcons 
-                name="arrow-drop-down" 
-                size={20} 
-                color={Colors.grey8 || '#999'} 
+              <MaterialIcons
+                name="arrow-drop-down"
+                size={20}
+                color={Colors.grey8 || '#999'}
               />
             </Pressable>
-            
+
             <View style={styles.phoneNumberWrapper}>
               <Text style={styles.countryCode}>+{selectedCountry.callingCode}</Text>
               <TextInput
@@ -691,26 +738,26 @@ const Register = () => {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
             />
-            <Pressable 
+            <Pressable
               style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Ionicons 
-                name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                size={22} 
-                color={Colors.whiteColor} 
+              <Ionicons
+                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                size={22}
+                color={Colors.whiteColor}
               />
             </Pressable>
           </View>
-          
+
           {/* Password Requirements List */}
           {password && (
             <View style={styles.passwordRequirementsContainer}>
               <View style={styles.requirementItem}>
-                <Ionicons 
-                  name={passwordRequirements.minLength ? "checkmark-circle" : "ellipse-outline"} 
-                  size={18} 
-                  color={passwordRequirements.minLength ? "#4CAF50" : "#666666"} 
+                <Ionicons
+                  name={passwordRequirements.minLength ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={passwordRequirements.minLength ? "#4CAF50" : "#666666"}
                 />
                 <Text style={[
                   styles.requirementText,
@@ -719,12 +766,12 @@ const Register = () => {
                   At least 8 characters
                 </Text>
               </View>
-              
+
               <View style={styles.requirementItem}>
-                <Ionicons 
-                  name={passwordRequirements.hasUppercase ? "checkmark-circle" : "ellipse-outline"} 
-                  size={18} 
-                  color={passwordRequirements.hasUppercase ? "#4CAF50" : "#666666"} 
+                <Ionicons
+                  name={passwordRequirements.hasUppercase ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={passwordRequirements.hasUppercase ? "#4CAF50" : "#666666"}
                 />
                 <Text style={[
                   styles.requirementText,
@@ -733,12 +780,12 @@ const Register = () => {
                   At least one uppercase letter
                 </Text>
               </View>
-              
+
               <View style={styles.requirementItem}>
-                <Ionicons 
-                  name={passwordRequirements.hasNumber ? "checkmark-circle" : "ellipse-outline"} 
-                  size={18} 
-                  color={passwordRequirements.hasNumber ? "#4CAF50" : "#666666"} 
+                <Ionicons
+                  name={passwordRequirements.hasNumber ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={passwordRequirements.hasNumber ? "#4CAF50" : "#666666"}
                 />
                 <Text style={[
                   styles.requirementText,
@@ -747,12 +794,12 @@ const Register = () => {
                   At least one number
                 </Text>
               </View>
-              
+
               <View style={styles.requirementItem}>
-                <Ionicons 
-                  name={passwordRequirements.hasSpecialChar ? "checkmark-circle" : "ellipse-outline"} 
-                  size={18} 
-                  color={passwordRequirements.hasSpecialChar ? "#4CAF50" : "#666666"} 
+                <Ionicons
+                  name={passwordRequirements.hasSpecialChar ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={passwordRequirements.hasSpecialChar ? "#4CAF50" : "#666666"}
                 />
                 <Text style={[
                   styles.requirementText,
@@ -782,14 +829,14 @@ const Register = () => {
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
             />
-            <Pressable 
+            <Pressable
               style={styles.eyeIcon}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
-              <Ionicons 
-                name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} 
-                size={22} 
-                color={Colors.whiteColor} 
+              <Ionicons
+                name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                size={22}
+                color={Colors.whiteColor}
               />
             </Pressable>
           </View>
@@ -847,7 +894,7 @@ const Register = () => {
 
         {/* Gender Selection */}
         <View style={styles.genderContainer}>
-          <Pressable 
+          <Pressable
             style={styles.genderOption}
             onPress={() => setGender('Male')}
           >
@@ -859,7 +906,7 @@ const Register = () => {
 
           {/* <View style={styles.genderDivider} /> */}
 
-          <Pressable 
+          <Pressable
             style={styles.genderOption}
             onPress={() => setGender('Female')}
           >
@@ -909,60 +956,79 @@ const Register = () => {
         transparent={true}
         onRequestClose={() => setShowCountryModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Country</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowCountryModal(false);
-                  setCountrySearchQuery(''); // Clear search when modal closes
-                }}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color={Colors.whiteColor} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Search Input */}
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={Colors.grey8 || '#999'} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search country..."
-                placeholderTextColor={Colors.grey8 || '#999'}
-                value={countrySearchQuery}
-                onChangeText={setCountrySearchQuery}
-                autoCapitalize="none"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+          keyboardVerticalOffset={0}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => {
+              setShowCountryModal(false);
+              setCountrySearchQuery('');
+            }}
+          >
+            <Pressable
+              style={styles.modalContent}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Country</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowCountryModal(false);
+                    setCountrySearchQuery('');
+                  }}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color={Colors.whiteColor} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Search Input */}
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={Colors.grey8 || '#999'} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search country..."
+                  placeholderTextColor={Colors.grey8 || '#999'}
+                  value={countrySearchQuery}
+                  onChangeText={setCountrySearchQuery}
+                  autoCapitalize="none"
+                  returnKeyType="search"
+                />
+                {countrySearchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setCountrySearchQuery('')}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color={Colors.grey8 || '#999'} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <FlatList
+                data={filteredCountries}
+                keyExtractor={(item) => item.code}
+                style={styles.countryList}
+                contentContainerStyle={styles.countryListContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.countryItem}
+                    onPress={() => selectCountry(item)}
+                  >
+                    <Text style={styles.countryFlag}>{item.flag}</Text>
+                    <Text style={styles.countryName}>{item.name}</Text>
+                    <Text style={styles.countryCode}>+{item.callingCode}</Text>
+                  </TouchableOpacity>
+                )}
               />
-              {countrySearchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setCountrySearchQuery('')}
-                  style={styles.clearButton}
-                >
-                  <Ionicons name="close-circle" size={20} color={Colors.grey8 || '#999'} />
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            <FlatList
-              data={filteredCountries}
-              keyExtractor={(item) => item.code}
-              style={styles.countryList}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.countryItem}
-                  onPress={() => selectCountry(item)}
-                >
-                  <Text style={styles.countryFlag}>{item.flag}</Text>
-                  <Text style={styles.countryName}>{item.name}</Text>
-                  <Text style={styles.countryCode}>+{item.callingCode}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Terms and Conditions Modal */}
@@ -985,14 +1051,14 @@ const Register = () => {
               <Ionicons name="close" size={24} color={Colors.whiteColor} />
             </TouchableOpacity>
           </View>
-          
+
           {webViewLoading && (
             <View style={styles.webViewLoader}>
               <ActivityIndicator size="large" color={Colors.yellow || '#FFD700'} />
               <Text style={styles.loadingText}>Loading Terms and Conditions...</Text>
             </View>
           )}
-          
+
           <WebView
             source={{ uri: 'https://trihp.com/terms-and-condition' }}
             style={styles.webView}
@@ -1227,6 +1293,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   // Modal styles
+
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1236,8 +1304,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.blackColor || '#000',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1281,7 +1349,11 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   countryList: {
-    maxHeight: 400,
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  countryListContent: {
+    paddingBottom: 10,
   },
   countryItem: {
     flexDirection: 'row',

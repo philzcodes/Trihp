@@ -2,7 +2,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authAPI } from '../../api/services';
 import { AlertModal, TriphButton } from '../../components';
@@ -223,7 +223,7 @@ const LoginWithPhone = () => {
   });
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
-  
+
   // Alert modal state
   const [alertModal, setAlertModal] = useState({
     visible: false,
@@ -231,7 +231,7 @@ const LoginWithPhone = () => {
     title: '',
     message: '',
   });
-  
+
   const showAlert = (type, title, message) => {
     setAlertModal({
       visible: true,
@@ -240,7 +240,7 @@ const LoginWithPhone = () => {
       message,
     });
   };
-  
+
   const hideAlert = () => {
     setAlertModal({
       visible: false,
@@ -253,7 +253,7 @@ const LoginWithPhone = () => {
   const onLogin = async () => {
     try {
       console.log('Validating input...');
-      
+
       if (!phoneNumber) {
         showAlert('error', 'Error', 'Please enter your phone number');
         return;
@@ -263,17 +263,17 @@ const LoginWithPhone = () => {
         showAlert('error', 'Error', 'Please enter a valid phone number');
         return;
       }
-      
+
       if (!password) {
         showAlert('error', 'Error', 'Please enter your password');
         return;
       }
 
       setLoading(true);
-      
+
       // Format phone number with country code
       const formattedPhone = `+${selectedCountry.callingCode}${phoneNumber}`;
-      
+
       const loginData = {
         emailOrPhone: formattedPhone,
         password: password,
@@ -283,9 +283,9 @@ const LoginWithPhone = () => {
       console.log('Login data being sent:', loginData);
       const response = await authAPI.login(loginData);
       console.log('Login response:', response);
-      
+
       setLoading(false);
-      
+
       if (response.success) {
         // Store user data and tokens in AsyncStorage
         if (response.data) {
@@ -310,20 +310,20 @@ const LoginWithPhone = () => {
               workAddress: response.data.workAddress,
             }
           };
-          
+
           try {
             await AsyncStorage.setItem('userDetail', JSON.stringify(userData));
             console.log('User data saved to AsyncStorage');
-            
+
             // Update Zustand store
             setUserData(userData);
           } catch (storageError) {
             console.error('Error saving user data:', storageError);
           }
         }
-        
+
         showAlert('success', 'Success', response.message || 'Login successful! Welcome back!');
-        
+
         // Navigate after a short delay to show success message
         setTimeout(() => {
           hideAlert();
@@ -332,18 +332,18 @@ const LoginWithPhone = () => {
       } else {
         showAlert('error', 'Error', response.message || 'Login failed. Please check your credentials.');
       }
-      
+
     } catch (error) {
       setLoading(false);
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Login failed. Please try again.';
       if (error.message) {
         errorMessage = error.message;
       } else if (error.error) {
         errorMessage = error.error;
       }
-      
+
       showAlert('error', 'Error', errorMessage);
     }
   };
@@ -360,11 +360,11 @@ const LoginWithPhone = () => {
 
   // Filter countries based on search query
   const filteredCountries = countrySearchQuery
-    ? countries.filter(country => 
-        country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
-        country.callingCode.includes(countrySearchQuery) ||
-        country.code.toLowerCase().includes(countrySearchQuery.toLowerCase())
-      )
+    ? countries.filter(country =>
+      country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
+      country.callingCode.includes(countrySearchQuery) ||
+      country.code.toLowerCase().includes(countrySearchQuery.toLowerCase())
+    )
     : countries;
 
   return (
@@ -372,7 +372,7 @@ const LoginWithPhone = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable 
+          <Pressable
             onPress={() => router.back()}
             style={styles.backButton}
           >
@@ -382,26 +382,26 @@ const LoginWithPhone = () => {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* Phone Number Input with Country Selector */}
           <View style={styles.inputWrapper}>
             <View style={styles.phoneInputContainer}>
-              <Pressable 
+              <Pressable
                 style={styles.flagContainer}
                 onPress={handleCountrySelect}
               >
                 <Text style={styles.flagText}>{selectedCountry.flag}</Text>
-                <MaterialIcons 
-                  name="arrow-drop-down" 
-                  size={20} 
-                  color={Colors.grey8 || '#999'} 
+                <MaterialIcons
+                  name="arrow-drop-down"
+                  size={20}
+                  color={Colors.grey8 || '#999'}
                 />
               </Pressable>
-              
+
               <View style={styles.phoneNumberWrapper}>
                 <Text style={styles.countryCode}>+{selectedCountry.callingCode}</Text>
                 <TextInput
@@ -415,7 +415,7 @@ const LoginWithPhone = () => {
               </View>
             </View>
           </View>
-          
+
           {/* Login with email link - Centered */}
           <Pressable
             onPress={() => router.push('/(auth)/Login')}
@@ -435,18 +435,18 @@ const LoginWithPhone = () => {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
             />
-            <Pressable 
+            <Pressable
               style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Ionicons 
-                name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                size={22} 
-                color={Colors.whiteColor} 
+              <Ionicons
+                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                size={22}
+                color={Colors.whiteColor}
               />
             </Pressable>
           </View>
-          
+
           {/* Forgot Password Link - Right aligned */}
           <Pressable
             onPress={() => router.push('/(auth)/ForgotPassword')}
@@ -456,8 +456,8 @@ const LoginWithPhone = () => {
           </Pressable>
 
           {/* Done Button */}
-          <TriphButton 
-            text={loading ? "Processing..." : "Done"} 
+          <TriphButton
+            text={loading ? "Processing..." : "Done"}
             onPress={onLogin}
             loading={loading}
             extraStyle={styles.doneButton}
@@ -474,66 +474,86 @@ const LoginWithPhone = () => {
         </ScrollView>
 
         {/* Country Selection Modal */}
+
         <Modal
           visible={showCountryModal}
           animationType="slide"
           transparent={true}
           onRequestClose={() => setShowCountryModal(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Country</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowCountryModal(false);
-                    setCountrySearchQuery(''); // Clear search when modal closes
-                  }}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={24} color={Colors.whiteColor} />
-                </TouchableOpacity>
-              </View>
-              
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color={Colors.grey8 || '#999'} style={styles.searchIcon} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search country..."
-                  placeholderTextColor={Colors.grey8 || '#999'}
-                  value={countrySearchQuery}
-                  onChangeText={setCountrySearchQuery}
-                  autoCapitalize="none"
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+            keyboardVerticalOffset={0}
+          >
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => {
+                setShowCountryModal(false);
+                setCountrySearchQuery('');
+              }}
+            >
+              <Pressable
+                style={styles.modalContent}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select Country</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowCountryModal(false);
+                      setCountrySearchQuery('');
+                    }}
+                    style={styles.closeButton}
+                  >
+                    <Ionicons name="close" size={24} color={Colors.whiteColor} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Search Input */}
+                <View style={styles.searchContainer}>
+                  <Ionicons name="search" size={20} color={Colors.grey8 || '#999'} style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search country..."
+                    placeholderTextColor={Colors.grey8 || '#999'}
+                    value={countrySearchQuery}
+                    onChangeText={setCountrySearchQuery}
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                  />
+                  {countrySearchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setCountrySearchQuery('')}
+                      style={styles.clearButton}
+                    >
+                      <Ionicons name="close-circle" size={20} color={Colors.grey8 || '#999'} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <FlatList
+                  data={filteredCountries}
+                  keyExtractor={(item) => item.code}
+                  style={styles.countryList}
+                  contentContainerStyle={styles.countryListContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.countryItem}
+                      onPress={() => selectCountry(item)}
+                    >
+                      <Text style={styles.countryFlag}>{item.flag}</Text>
+                      <Text style={styles.countryName}>{item.name}</Text>
+                      <Text style={styles.countryCode}>+{item.callingCode}</Text>
+                    </TouchableOpacity>
+                  )}
                 />
-                {countrySearchQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setCountrySearchQuery('')}
-                    style={styles.clearButton}
-                  >
-                    <Ionicons name="close-circle" size={20} color={Colors.grey8 || '#999'} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              <FlatList
-                data={filteredCountries}
-                keyExtractor={(item) => item.code}
-                style={styles.countryList}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.countryItem}
-                    onPress={() => selectCountry(item)}
-                  >
-                    <Text style={styles.countryFlag}>{item.flag}</Text>
-                    <Text style={styles.countryName}>{item.name}</Text>
-                    <Text style={styles.countryCodeText}>+{item.callingCode}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Alert Modal */}
@@ -708,8 +728,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.blackColor || '#000',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -718,12 +738,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: Colors.grey11 || '#2A2A2A',
   },
   modalTitle: {
     ...Fonts.TextBold,
     fontSize: 18,
-    color: Colors.whiteColor || '#FFFFFF',
+    color: Colors.whiteColor || '#FFF',
   },
   closeButton: {
     padding: 5,
@@ -753,7 +773,11 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   countryList: {
-    maxHeight: 400,
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  countryListContent: {
+    paddingBottom: 10,
   },
   countryItem: {
     flexDirection: 'row',
@@ -761,7 +785,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: Colors.grey11 || '#2A2A2A',
   },
   countryFlag: {
     fontSize: 24,
@@ -770,10 +794,10 @@ const styles = StyleSheet.create({
   countryName: {
     ...Fonts.Regular,
     fontSize: 16,
-    color: Colors.whiteColor || '#FFFFFF',
+    color: Colors.whiteColor || '#FFF',
     flex: 1,
   },
-  countryCodeText: {
+  countryCode: {
     ...Fonts.Regular,
     fontSize: 14,
     color: Colors.grey8 || '#999',
