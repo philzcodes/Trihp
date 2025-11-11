@@ -16,7 +16,7 @@
         "NSLocationAlwaysUsageDescription": "This app uses your location to find nearby drivers and show your ride on the map."
       },
       "config": {
-        "googleMapsApiKey": "AIzaSyDcw1UIsLcO8Gsp4X3txf0T8bmg1hiU5go"
+        "googleMapsApiKey": "google-api-maps-key"
       }
     },
     "android": {
@@ -35,7 +35,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDcw1UIsLcO8Gsp4X3txf0T8bmg1hiU5go"
+          "apiKey": "google-api-maps-key"
         }
       }
     },
